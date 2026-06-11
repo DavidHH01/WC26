@@ -137,7 +137,7 @@ function isDirtyAndValid(matchId: number) {
         <h1 class="font-display font-black text-4xl sm:text-5xl uppercase tracking-wide mb-1">
           Predicciones
         </h1>
-        <p class="text-gray-500 text-sm">Fase de grupos · {{ predicted }}/{{ total }} guardadas</p>
+        <p class="text-gray-400 text-sm">Fase de grupos · {{ predicted }}/{{ total }} guardadas</p>
       </div>
 
       <!-- Progress -->
@@ -154,6 +154,9 @@ function isDirtyAndValid(matchId: number) {
         </div>
       </div>
     </div>
+
+    <!-- Estrellas del torneo -->
+    <StarPlayers />
 
     <!-- Round tabs -->
     <div class="flex gap-2 mb-8">
@@ -206,7 +209,7 @@ function isDirtyAndValid(matchId: number) {
 
             <!-- Home team -->
             <div class="flex-1 flex items-center gap-2 min-w-0">
-              <span class="text-2xl shrink-0">{{ m.home_country?.flag }}</span>
+              <CountryFlag :code="m.home_country?.code" :name="m.home_country?.name" :size="24" />
               <span class="font-display font-bold uppercase text-sm tracking-wide truncate">
                 {{ m.home_country?.name }}
               </span>
@@ -252,7 +255,7 @@ function isDirtyAndValid(matchId: number) {
               <span class="font-display font-bold uppercase text-sm tracking-wide truncate text-right">
                 {{ m.away_country?.name }}
               </span>
-              <span class="text-2xl shrink-0">{{ m.away_country?.flag }}</span>
+              <CountryFlag :code="m.away_country?.code" :name="m.away_country?.name" :size="24" />
             </div>
           </div>
 

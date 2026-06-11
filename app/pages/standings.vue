@@ -18,6 +18,20 @@ const { data: groupRows, pending: loadingGroups } = await useAsyncData('group-st
   return data ?? []
 })
 
+// ── Fetch top scorers ─────────────────────────────────────────
+const { data: scorers, pending: loadingScorers } = await useAsyncData('top-scorers', async () => {
+  const { data } = await supabase
+    .from('top_scorers')
+    .select(`
+      id, player_name, position, goals, assists, matches,
+      country:countries(name, code, flag)
+    `)
+    .order('goals', { ascending: false })
+    .order('assists', { ascending: false })
+    .limit(50)
+  return data ?? []
+})
+
 // ── Groups tab ────────────────────────────────────────────────
 const groupNames = ['A','B','C','D','E','F','G','H','I','J','K','L']
 const selectedGroup = ref('A')
@@ -29,7 +43,9 @@ const groupStandings = computed(() =>
 )
 
 // ── Tabs ──────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'groups'>('users')
+const activeTab = ref<'users' | 'groups' | 'scorers'>('users')
+
+import { playerImageByName } from '~/utils/players'
 
 // ── Helpers ───────────────────────────────────────────────────
 function rankColor(rank: number) {
@@ -53,7 +69,7 @@ function rankBg(rank: number) {
     <h1 class="font-display font-black text-4xl sm:text-5xl uppercase tracking-wide mb-2">
       Clasificación
     </h1>
-    <p class="text-gray-500 text-sm mb-8">Rankings y estadísticas del torneo</p>
+    <p class="text-gray-400 text-sm mb-8">Rankings y estadísticas del torneo</p>
 
     <!-- Tabs -->
     <div class="flex gap-2 mb-8">
@@ -68,6 +84,12 @@ function rankBg(rank: number) {
         @click="activeTab = 'groups'"
       >
         Grupos
+      </button>
+      <button
+        :class="activeTab === 'scorers' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'"
+        @click="activeTab = 'scorers'"
+      >
+        Goleadores
       </button>
     </div>
 
@@ -199,7 +221,7 @@ function rankBg(rank: number) {
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <span class="font-display font-black text-sm w-5 text-gray-500">{{ row.position }}</span>
-                  <span class="text-lg">{{ row.flag }}</span>
+                  <CountryFlag :code="row.code" :name="row.name" :size="20" />
                   <span class="font-semibold truncate max-w-[120px] sm:max-w-none">{{ row.name }}</span>
                   <span v-if="i < 2" class="hidden sm:inline text-xs text-wc-green font-bold border border-wc-green/30 bg-wc-green/10 px-1.5 py-0.5 rounded-sm">
                     CLASIF
@@ -221,9 +243,78 @@ function rankBg(rank: number) {
             </tr>
           </tbody>
         </table>
-        <p class="px-4 py-2 text-xs text-gray-600 border-t border-dark-500">
+        <p class="px-4 py-2 text-xs text-gray-500 border-t border-dark-500">
           Los dos primeros de cada grupo clasifican a octavos de final
         </p>
+      </AppCard>
+    </div>
+
+    <!-- ── GOLEADORES ────────────────────────────────────────── -->
+    <div v-if="activeTab === 'scorers'">
+
+      <!-- Loading -->
+      <AppCard v-if="loadingScorers" pad="md" class="animate-pulse">
+        <div class="h-40 bg-dark-600 rounded" />
+      </AppCard>
+
+      <!-- Empty -->
+      <AppCard v-else-if="!scorers?.length" pad="xl" class="text-center">
+        <p class="text-3xl mb-3">⚽</p>
+        <p class="font-display font-bold text-xl uppercase tracking-wide text-gray-400">
+          Aún no hay goleadores
+        </p>
+        <p class="text-sm text-gray-500 mt-1">
+          La tabla se actualizará cuando empiece el torneo.
+        </p>
+      </AppCard>
+
+      <!-- Scorers table -->
+      <AppCard v-else pad="none" accent="gold">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-dark-500 text-gray-400 text-xs uppercase tracking-wider">
+              <th class="text-left px-4 py-3 font-bold w-10">#</th>
+              <th class="text-left px-4 py-3 font-bold">Jugador</th>
+              <th class="text-center px-2 py-3 font-bold hidden sm:table-cell">Pos</th>
+              <th class="text-center px-2 py-3 font-bold hidden sm:table-cell">PJ</th>
+              <th class="text-center px-2 py-3 font-bold">Asist.</th>
+              <th class="text-center px-3 py-3 font-bold text-wc-gold">Goles</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(s, i) in scorers"
+              :key="s.id"
+              class="border-b border-dark-500/40 hover:bg-dark-700/40 transition-colors"
+            >
+              <td class="px-4 py-3 font-display font-bold text-gray-400">{{ i + 1 }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <img
+                    v-if="playerImageByName(s.player_name)"
+                    :src="playerImageByName(s.player_name)"
+                    :alt="s.player_name"
+                    class="w-9 h-9 rounded-full object-cover object-top border border-dark-400 bg-dark-700 shrink-0"
+                  />
+                  <CountryFlag v-else :code="s.country?.code" :name="s.country?.name" :size="22" />
+                  <div class="min-w-0">
+                    <p class="font-semibold truncate">{{ s.player_name }}</p>
+                    <p class="text-xs text-gray-500 truncate flex items-center gap-1.5">
+                      <CountryFlag :code="s.country?.code" :name="s.country?.name" :size="12" />
+                      {{ s.country?.name }}
+                    </p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-2 py-3 text-center text-gray-400 hidden sm:table-cell">{{ s.position ?? '—' }}</td>
+              <td class="px-2 py-3 text-center text-gray-400 hidden sm:table-cell">{{ s.matches }}</td>
+              <td class="px-2 py-3 text-center text-gray-300">{{ s.assists }}</td>
+              <td class="px-3 py-3 text-center font-display font-black text-xl text-wc-gold">
+                {{ s.goals }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </AppCard>
     </div>
 
