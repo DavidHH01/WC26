@@ -158,6 +158,9 @@ function isDirtyAndValid(matchId: number) {
     <!-- Estrellas del torneo -->
     <StarPlayers />
 
+    <!-- Cómo funciona la puntuación -->
+    <ScoringInfo />
+
     <!-- Round tabs -->
     <div class="flex gap-2 mb-8">
       <button
