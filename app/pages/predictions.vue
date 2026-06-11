@@ -126,6 +126,25 @@ function isDirtyAndValid(matchId: number) {
   const { home, away } = inputs[matchId] ?? {}
   return home !== null && home !== undefined && away !== null && away !== undefined
 }
+
+// Bloquea el partido si ya empezó (por hora) o no está programado
+function isLocked(m: any): boolean {
+  if (m.status !== 'scheduled') return true
+  return new Date(m.match_date) <= new Date()
+}
+
+// Puntos potenciales que puede dar un partido según los rankings FIFA
+function potentialPts(m: any) {
+  const hFifa = m.home_fifa_points as number | null
+  const aFifa = m.away_fifa_points as number | null
+  if (!hFifa || !aFifa) return { exact: 3, winner: 1, bonus: 0 }
+  const diff = Math.abs(hFifa - aFifa)
+  const avg = (hFifa + aFifa) / 2
+  const upsetBonus = Math.min(5, Math.floor(diff / 100))
+  const weakBonus = avg < 1550 ? 1 : 0
+  const bonus = upsetBonus + weakBonus
+  return { exact: 3 + bonus, winner: 1 + bonus, bonus }
+}
 </script>
 
 <template>
@@ -137,12 +156,12 @@ function isDirtyAndValid(matchId: number) {
         <h1 class="font-display font-black text-4xl sm:text-5xl uppercase tracking-wide mb-1">
           Predicciones
         </h1>
-        <p class="text-gray-400 text-sm">Fase de grupos · {{ predicted }}/{{ total }} guardadas</p>
+        <p class="text-gray-400 text-base">Fase de grupos · {{ predicted }}/{{ total }} guardadas</p>
       </div>
 
       <!-- Progress -->
       <div class="sm:w-48">
-        <div class="flex justify-between text-xs text-gray-500 mb-1.5">
+        <div class="flex justify-between text-sm text-gray-400 mb-1.5">
           <span>{{ progress }}% completado</span>
           <span>{{ predicted }}/{{ total }}</span>
         </div>
@@ -191,17 +210,23 @@ function isDirtyAndValid(matchId: number) {
         <!-- Card header: group + date -->
         <div class="flex items-center justify-between px-4 pt-3 pb-2 border-b border-dark-500">
           <div class="flex items-center gap-2">
-            <span class="font-display font-black text-xs uppercase tracking-widest
+            <span class="font-display font-black text-sm uppercase tracking-widest
                          bg-dark-600 text-gray-300 px-2 py-0.5 rounded-sm">
               Grupo {{ m.group?.name }}
             </span>
-            <span v-if="m.status === 'live'" class="flex items-center gap-1 text-xs text-wc-red font-bold uppercase">
+            <span v-if="m.status === 'live'" class="flex items-center gap-1 text-sm text-wc-red font-bold uppercase">
               <span class="w-1.5 h-1.5 rounded-full bg-wc-red animate-pulse inline-block" />
               En vivo
             </span>
-            <span v-else-if="m.status === 'finished'" class="text-xs text-gray-500">Finalizado</span>
+            <span v-else-if="m.status === 'finished'" class="text-sm text-gray-400">Finalizado</span>
+            <span v-else-if="isLocked(m)" class="flex items-center gap-1 text-sm text-amber-400 font-bold uppercase">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+              </svg>
+              Cerrado
+            </span>
           </div>
-          <span class="text-xs text-gray-500 font-medium">
+          <span class="text-sm text-gray-400 font-medium">
             {{ fmtDate(m.match_date) }} · {{ fmtTime(m.match_date) }}
           </span>
         </div>
@@ -212,8 +237,8 @@ function isDirtyAndValid(matchId: number) {
 
             <!-- Home team -->
             <div class="flex-1 flex items-center gap-2 min-w-0">
-              <CountryFlag :code="m.home_country?.code" :name="m.home_country?.name" :size="24" />
-              <span class="font-display font-bold uppercase text-sm tracking-wide truncate">
+              <CountryFlag :code="m.home_country?.code" :name="m.home_country?.name" :size="28" />
+              <span class="font-display font-bold uppercase text-base tracking-wide truncate">
                 {{ m.home_country?.name }}
               </span>
             </div>
@@ -236,16 +261,16 @@ function isDirtyAndValid(matchId: number) {
                 <input
                   v-model.number="inputs[m.id].home"
                   type="number" min="0" max="20"
-                  :disabled="m.status !== 'scheduled'"
+                  :disabled="isLocked(m)"
                   class="score-input"
                   placeholder="—"
                   @input="onInput(m.id)"
                 >
-                <span class="text-gray-500 font-bold">—</span>
+                <span class="text-gray-400 font-bold">—</span>
                 <input
                   v-model.number="inputs[m.id].away"
                   type="number" min="0" max="20"
-                  :disabled="m.status !== 'scheduled'"
+                  :disabled="isLocked(m)"
                   class="score-input"
                   placeholder="—"
                   @input="onInput(m.id)"
@@ -255,60 +280,86 @@ function isDirtyAndValid(matchId: number) {
 
             <!-- Away team -->
             <div class="flex-1 flex items-center justify-end gap-2 min-w-0">
-              <span class="font-display font-bold uppercase text-sm tracking-wide truncate text-right">
+              <span class="font-display font-bold uppercase text-base tracking-wide truncate text-right">
                 {{ m.away_country?.name }}
               </span>
-              <CountryFlag :code="m.away_country?.code" :name="m.away_country?.name" :size="24" />
+              <CountryFlag :code="m.away_country?.code" :name="m.away_country?.name" :size="28" />
             </div>
           </div>
 
-          <!-- Prediction row (only if match is scheduled/live or user has a prediction) -->
+          <!-- Prediction row -->
           <div
             v-if="m.status !== 'finished' || predFor(m.id)"
             class="flex items-center justify-between mt-3 pt-3 border-t border-dark-500/50"
           >
-            <!-- Left: save button (scheduled) or prediction recap (finished) -->
+            <!-- Left: save button / recap / locked -->
             <div class="flex items-center gap-3">
               <template v-if="m.status === 'finished' && predFor(m.id)">
-                <span class="text-xs text-gray-400">
+                <span class="text-sm text-gray-400">
                   Tu predicción:
                   <strong class="text-white">
                     {{ predFor(m.id)!.home_score }}–{{ predFor(m.id)!.away_score }}
                   </strong>
                 </span>
               </template>
-              <template v-else-if="m.status === 'scheduled'">
+              <template v-else-if="!isLocked(m)">
                 <button
                   :disabled="saving[m.id] || !isDirtyAndValid(m.id)"
-                  :class="isDirtyAndValid(m.id) ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'"
+                  :class="isDirtyAndValid(m.id) ? 'btn-primary' : 'btn-secondary'"
                   @click="save(m.id)"
                 >
                   {{ saving[m.id] ? 'Guardando…' : predFor(m.id) ? 'Actualizar' : 'Guardar' }}
                 </button>
-                <span v-if="saveErr[m.id]" class="text-xs text-red-400">{{ saveErr[m.id] }}</span>
+                <span v-if="saveErr[m.id]" class="text-sm text-red-400">{{ saveErr[m.id] }}</span>
+              </template>
+              <template v-else-if="isLocked(m) && m.status === 'scheduled'">
+                <span v-if="predFor(m.id)" class="text-sm text-gray-400">
+                  Tu predicción:
+                  <strong class="text-white">
+                    {{ predFor(m.id)!.home_score }}–{{ predFor(m.id)!.away_score }}
+                  </strong>
+                </span>
+                <span v-else class="text-sm text-gray-400">Sin predicción guardada</span>
               </template>
             </div>
 
-            <!-- Right: points earned or status -->
+            <!-- Right: points earned / potential / status -->
             <div class="text-right">
+              <!-- Partido terminado: puntos reales -->
               <template v-if="m.status === 'finished' && predFor(m.id)">
-                <span
-                  :class="['font-display font-black text-lg', resultClass(predFor(m.id)!.points_earned)]"
-                >
+                <span :class="['font-display font-black text-xl', resultClass(predFor(m.id)!.points_earned)]">
                   +{{ predFor(m.id)!.points_earned }} pts
                 </span>
-                <p :class="['text-xs mt-0.5', resultClass(predFor(m.id)!.points_earned)]">
+                <p :class="['text-sm mt-0.5 font-medium', resultClass(predFor(m.id)!.points_earned)]">
                   {{ resultLabel(predFor(m.id)!.points_earned) }}
                 </p>
               </template>
-              <template v-else-if="!predFor(m.id)">
-                <span class="text-xs text-gray-600">Sin predicción</span>
+              <!-- Partido abierto: puntos potenciales -->
+              <template v-else-if="!isLocked(m)">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                  <span class="flex items-center gap-1">
+                    <span class="font-display font-bold text-wc-green">+{{ potentialPts(m).exact }}</span>
+                    <span>exacto</span>
+                  </span>
+                  <span class="text-gray-600">·</span>
+                  <span class="flex items-center gap-1">
+                    <span class="font-display font-bold text-blue-400">+{{ potentialPts(m).winner }}</span>
+                    <span>ganador</span>
+                  </span>
+                </div>
+                <p v-if="potentialPts(m).bonus > 0" class="text-sm text-wc-gold mt-0.5">
+                  +{{ potentialPts(m).bonus }} bonus posible
+                </p>
               </template>
-              <template v-else>
-                <span class="text-xs text-gray-400 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-wc-green inline-block" />
+              <!-- Cerrado con predicción guardada -->
+              <template v-else-if="predFor(m.id)">
+                <span class="text-sm text-gray-400 flex items-center gap-1.5 justify-end">
+                  <span class="w-2 h-2 rounded-full bg-wc-green inline-block" />
                   Guardado
                 </span>
+              </template>
+              <template v-else>
+                <span class="text-sm text-gray-400">Sin predicción</span>
               </template>
             </div>
           </div>
@@ -318,7 +369,7 @@ function isDirtyAndValid(matchId: number) {
       <!-- Empty state -->
       <AppCard v-if="roundMatches.length === 0" pad="xl" class="text-center">
         <p class="text-3xl mb-3">📅</p>
-        <p class="font-display font-bold text-xl uppercase tracking-wide text-gray-500">
+        <p class="font-display font-bold text-xl uppercase tracking-wide text-gray-300">
           Sin partidos en esta jornada
         </p>
       </AppCard>
