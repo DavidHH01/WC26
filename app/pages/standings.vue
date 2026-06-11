@@ -109,7 +109,7 @@ function rankBg(rank: number) {
         <p class="font-display font-bold text-xl uppercase tracking-wide text-gray-500">
           Aún no hay predicciones
         </p>
-        <p class="text-sm text-gray-600 mt-1">
+        <p class="text-sm text-gray-400 mt-1">
           La clasificación se activará cuando los usuarios empiecen a predecir.
         </p>
       </AppCard>
@@ -127,11 +127,11 @@ function rankBg(rank: number) {
               <p :class="['font-display font-black text-5xl mb-1', rankColor(row.rank)]">
                 {{ row.rank === 1 ? '🥇' : row.rank === 2 ? '🥈' : '🥉' }}
               </p>
-              <p class="font-display font-black text-lg uppercase tracking-wide">{{ row.username }}</p>
+              <p class="font-display font-black text-xl uppercase tracking-wide">{{ row.username }}</p>
               <p :class="['font-display font-black text-3xl mt-1', rankColor(row.rank)]">
                 {{ row.total_points }} <span class="text-base font-bold">pts</span>
               </p>
-              <p class="text-xs text-gray-500 mt-1">{{ row.exact_scores }} exactos · {{ row.correct_results }} acertados</p>
+              <p class="text-sm text-gray-400 mt-1">{{ row.exact_scores }} exactos · {{ row.correct_results }} acertados</p>
             </AppCard>
           </template>
         </div>
@@ -140,7 +140,7 @@ function rankBg(rank: number) {
         <AppCard v-if="leaderboard.length > 3" pad="none">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-b border-dark-500 text-gray-500 text-xs uppercase tracking-wider">
+              <tr class="border-b border-dark-500 text-gray-400 text-sm uppercase tracking-wider">
                 <th class="text-left px-4 py-3 font-bold w-10">#</th>
                 <th class="text-left px-4 py-3 font-bold">Usuario</th>
                 <th class="text-right px-4 py-3 font-bold">Exactos</th>
@@ -197,7 +197,7 @@ function rankBg(rank: number) {
         </div>
         <table class="w-full text-sm">
           <thead>
-            <tr class="border-b border-dark-500 text-gray-500 text-xs uppercase tracking-wider">
+            <tr class="border-b border-dark-500 text-gray-400 text-sm uppercase tracking-wider">
               <th class="text-left px-4 py-2.5 font-bold">Selección</th>
               <th class="text-center px-2 py-2.5 font-bold">PJ</th>
               <th class="text-center px-2 py-2.5 font-bold">G</th>
@@ -243,7 +243,7 @@ function rankBg(rank: number) {
             </tr>
           </tbody>
         </table>
-        <p class="px-4 py-2 text-xs text-gray-500 border-t border-dark-500">
+        <p class="px-4 py-2 text-xs text-gray-400 border-t border-dark-500">
           Los dos primeros de cada grupo clasifican a octavos de final
         </p>
       </AppCard>

@@ -69,8 +69,8 @@
 
   .label {
     @apply block font-display font-bold uppercase text-gray-400 mb-1.5;
-    font-size: 0.72rem;
-    letter-spacing: 0.18em;
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
   }
 
 
@@ -81,8 +81,8 @@
 
   .section-label {
     @apply inline-flex items-center gap-2.5 font-display font-bold uppercase text-gray-300;
-    font-size: 0.78rem;
-    letter-spacing: 0.2em;
+    font-size: 0.88rem;
+    letter-spacing: 0.18em;
   }
   .section-label::before {
     content: '';

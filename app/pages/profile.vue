@@ -118,13 +118,13 @@ const accuracy = computed(() => {
       <div class="flex items-center justify-between">
         <div>
           <p class="label">Nombre de usuario</p>
-          <p class="font-display font-black text-2xl uppercase tracking-wide mt-0.5">
+          <p class="font-display font-black text-3xl uppercase tracking-wide mt-0.5">
             {{ profile?.username ?? user?.user_metadata?.username ?? '—' }}
           </p>
         </div>
         <div class="text-right">
           <p class="label">Predicciones</p>
-          <p class="font-semibold text-lg">{{ profile?.total_predicted ?? 0 }} / 72</p>
+          <p class="font-semibold text-xl">{{ profile?.total_predicted ?? 0 }} / 72</p>
         </div>
       </div>
     </AppCard>
@@ -133,7 +133,7 @@ const accuracy = computed(() => {
     <div>
       <p class="section-label mb-5">Historial de predicciones</p>
 
-      <div v-if="!history?.length" class="text-center py-12 text-gray-600">
+      <div v-if="!history?.length" class="text-center py-12 text-gray-400">
         <p class="text-3xl mb-3">📋</p>
         <p class="font-display font-bold text-lg uppercase tracking-wide">Sin predicciones aún</p>
         <AppButton to="/predictions" class="mt-4">Ir a predecir</AppButton>
@@ -147,17 +147,17 @@ const accuracy = computed(() => {
         >
           <!-- Group + date -->
           <div class="hidden sm:block text-center w-16 shrink-0">
-            <p class="font-display font-black text-xs uppercase text-gray-500">
+            <p class="font-display font-black text-xs uppercase text-gray-400">
               Gr. {{ p.match?.group?.name }}
             </p>
-            <p class="text-xs text-gray-600">{{ fmtDate(p.match?.match_date) }}</p>
+            <p class="text-xs text-gray-400">{{ fmtDate(p.match?.match_date) }}</p>
           </div>
 
           <!-- Match -->
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-1.5 text-sm font-medium">
+            <div class="flex items-center gap-1.5 text-base font-medium">
               <CountryFlag :code="p.match?.home_country?.code" :name="p.match?.home_country?.name" :size="16" />
-              <span class="truncate text-xs sm:text-sm">{{ p.match?.home_country?.name }}</span>
+              <span class="truncate text-sm sm:text-base">{{ p.match?.home_country?.name }}</span>
               <span class="text-gray-400 px-1">
                 {{ p.match?.status === 'finished'
                     ? `${p.match.home_score}–${p.match.away_score}`
@@ -166,7 +166,7 @@ const accuracy = computed(() => {
               <span class="truncate text-xs sm:text-sm">{{ p.match?.away_country?.name }}</span>
               <CountryFlag :code="p.match?.away_country?.code" :name="p.match?.away_country?.name" :size="16" />
             </div>
-            <p class="text-xs text-gray-500 mt-0.5">
+            <p class="text-sm text-gray-400 mt-0.5">
               Tu predicción: {{ p.home_score }}–{{ p.away_score }}
             </p>
           </div>
@@ -181,7 +181,7 @@ const accuracy = computed(() => {
                 {{ resultLabel(p.points_earned) }}
               </p>
             </template>
-            <span v-else class="text-xs text-gray-600">Pendiente</span>
+            <span v-else class="text-xs text-gray-400">Pendiente</span>
           </div>
         </div>
       </div>
