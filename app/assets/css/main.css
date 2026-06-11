@@ -1,0 +1,263 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════
+   BASE
+   ════════════════════════════════════════════ */
+@layer base {
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: #080C1A;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection   { background-color: #E61D25; color: #fff; }
+
+  ::-webkit-scrollbar              { width: 5px; }
+  ::-webkit-scrollbar-track        { background: #080C1A; }
+  ::-webkit-scrollbar-thumb        { background: #1F2D52; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover  { background: #2A3D6E; }
+}
+
+/* ════════════════════════════════════════════
+   COMPONENTS
+   ════════════════════════════════════════════ */
+@layer components {
+
+  /* ── Cards ────────────────────────────────
+   * Sharp 4px radius — editorial, not bubbly.
+   * Accent top-border applied via inline style
+   * from the AppCard component.
+   * ─────────────────────────────────────────── */
+
+  .card {
+    @apply bg-dark-800 border border-dark-500;
+    border-radius: 4px;
+  }
+
+  /* Hover variant */
+  .card-hover {
+    @apply cursor-pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+  .card-hover:hover {
+    border-color: #2A3D6E;
+    transform: translateY(-2px);
+  }
+
+
+  /* ── Forms ────────────────────────────────── */
+
+  .input-field {
+    @apply w-full bg-dark-700 text-white placeholder-gray-600 px-4 py-3;
+    border: 2px solid #1F2D52;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+  }
+  .input-field:focus {
+    border-color: #2A398D;
+    box-shadow: 0 0 0 3px rgba(42, 57, 141, 0.18);
+  }
+
+  .label {
+    @apply block font-display font-bold uppercase text-gray-500 mb-1.5;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+  }
+
+
+  /* ── Section label ────────────────────────
+   * Red square dot + all-caps text.
+   * Editorial magazine style — not a pill/capsule.
+   * ─────────────────────────────────────────── */
+
+  .section-label {
+    @apply inline-flex items-center gap-2.5 font-display font-bold uppercase text-gray-500;
+    font-size: 0.65rem;
+    letter-spacing: 0.22em;
+  }
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 7px;
+    height: 7px;
+    background: #E61D25;
+    flex-shrink: 0;
+  }
+
+
+  /* ── Nav link ─────────────────────────────── */
+
+  .nav-link {
+    @apply text-sm text-gray-400 hover:text-white px-3 py-2 transition-colors;
+    font-family: 'Outfit', sans-serif;
+  }
+  .nav-link-active {
+    @apply text-white;
+  }
+
+
+  /* ── Alerts ──────────────────────────────── */
+
+  .alert-error {
+    @apply flex items-center gap-2 text-red-400 text-sm
+           bg-red-500/10 border border-red-500/20 px-4 py-3;
+    border-radius: 3px;
+  }
+
+  .alert-success {
+    @apply flex items-center gap-2 text-wc-green text-sm
+           bg-green-500/10 border border-green-500/20 px-4 py-3;
+    border-radius: 3px;
+  }
+
+
+  /* ── Stat / number display ───────────────── */
+
+  .stat-number {
+    @apply font-display font-black leading-none;
+    color: #C9A84C;
+    font-size: clamp(2rem, 5vw, 2.75rem);
+  }
+
+
+  /* ── Divider ─────────────────────────────── */
+
+  .divider {
+    @apply border-t border-dark-500;
+  }
+}
+
+/* ════════════════════════════════════════════
+   BUTTONS — outside @layer so Tailwind never purges them
+   (dynamic class names like btn-${variant} aren't found
+   by the content scanner, so they must live here)
+   ════════════════════════════════════════════ */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.065em;
+  color: #ffffff;
+  background-color: #E61D25;
+  padding: 0.62rem 1.5rem;
+  border-radius: 3px;
+  border: 2px solid #B0161C;
+  box-shadow: 3px 3px 0 #6B0A0E;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  transition: transform 0.09s ease, box-shadow 0.09s ease, background-color 0.15s ease;
+}
+.btn-primary:hover:not(:disabled):not([disabled]) {
+  background-color: #CC1920;
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #6B0A0E;
+}
+.btn-primary:active:not(:disabled):not([disabled]) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+.btn-primary:is(:disabled, [disabled]) {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.065em;
+  color: #ffffff;
+  background-color: #141C35;
+  padding: 0.62rem 1.5rem;
+  border-radius: 3px;
+  border: 2px solid #2A3D6E;
+  box-shadow: 3px 3px 0 #0E1428;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  transition: transform 0.09s ease, box-shadow 0.09s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.btn-secondary:hover:not(:disabled):not([disabled]) {
+  background-color: #1A2440;
+  border-color: #3D5490;
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #0E1428;
+}
+.btn-secondary:active:not(:disabled):not([disabled]) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+.btn-secondary:is(:disabled, [disabled]) {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.065em;
+  color: #9CA3AF;
+  background-color: transparent;
+  padding: 0.5rem 0.75rem;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.btn-ghost:hover:not(:disabled):not([disabled]) { color: #ffffff; }
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.065em;
+  color: #EF4444;
+  background-color: transparent;
+  padding: 0.5rem 0.75rem;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.btn-danger:hover:not(:disabled):not([disabled]) { color: #F87171; }
+
+.btn-sm { font-size: 0.72rem !important; padding: 0.35rem 1rem !important; }
+.btn-lg { font-size: 1rem   !important; padding: 0.85rem 2rem !important; }
