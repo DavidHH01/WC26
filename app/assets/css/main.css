@@ -68,9 +68,9 @@
   }
 
   .label {
-    @apply block font-display font-bold uppercase text-gray-500 mb-1.5;
-    font-size: 0.62rem;
-    letter-spacing: 0.2em;
+    @apply block font-display font-bold uppercase text-gray-400 mb-1.5;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
   }
 
 
@@ -80,9 +80,9 @@
    * ─────────────────────────────────────────── */
 
   .section-label {
-    @apply inline-flex items-center gap-2.5 font-display font-bold uppercase text-gray-500;
-    font-size: 0.65rem;
-    letter-spacing: 0.22em;
+    @apply inline-flex items-center gap-2.5 font-display font-bold uppercase text-gray-300;
+    font-size: 0.78rem;
+    letter-spacing: 0.2em;
   }
   .section-label::before {
     content: '';
@@ -259,5 +259,5 @@
 }
 .btn-danger:hover:not(:disabled):not([disabled]) { color: #F87171; }
 
-.btn-sm { font-size: 0.72rem !important; padding: 0.35rem 1rem !important; }
+.btn-sm { font-size: 0.82rem !important; padding: 0.4rem 1.1rem !important; }
 .btn-lg { font-size: 1rem   !important; padding: 0.85rem 2rem !important; }

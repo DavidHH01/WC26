@@ -78,7 +78,7 @@ const accuracy = computed(() => {
         <h1 class="font-display font-black text-4xl sm:text-5xl uppercase tracking-wide mb-1">
           Mi perfil
         </h1>
-        <p class="text-gray-500 text-sm">{{ user?.email }}</p>
+        <p class="text-gray-400 text-sm">{{ user?.email }}</p>
       </div>
       <AppButton variant="danger" @click="logout">Salir</AppButton>
     </div>
@@ -156,7 +156,7 @@ const accuracy = computed(() => {
           <!-- Match -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 text-sm font-medium">
-              <span>{{ p.match?.home_country?.flag }}</span>
+              <CountryFlag :code="p.match?.home_country?.code" :name="p.match?.home_country?.name" :size="16" />
               <span class="truncate text-xs sm:text-sm">{{ p.match?.home_country?.name }}</span>
               <span class="text-gray-400 px-1">
                 {{ p.match?.status === 'finished'
@@ -164,7 +164,7 @@ const accuracy = computed(() => {
                     : '—' }}
               </span>
               <span class="truncate text-xs sm:text-sm">{{ p.match?.away_country?.name }}</span>
-              <span>{{ p.match?.away_country?.flag }}</span>
+              <CountryFlag :code="p.match?.away_country?.code" :name="p.match?.away_country?.name" :size="16" />
             </div>
             <p class="text-xs text-gray-500 mt-0.5">
               Tu predicción: {{ p.home_score }}–{{ p.away_score }}
