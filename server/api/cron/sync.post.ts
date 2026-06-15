@@ -15,6 +15,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { syncToDatabase } from '../../utils/sync-db'
 
+// Acepta GET y POST para poder probarlo desde el navegador
 export default defineEventHandler(async (event) => {
   // ── Validar token secreto ────────────────────────────────────────────────
   const cronSecret = process.env.CRON_SECRET ?? ''
@@ -22,10 +23,10 @@ export default defineEventHandler(async (event) => {
   if (cronSecret) {
     // Acepta el secreto en cabecera x-cron-secret o como query param ?secret=
     const headerSecret = getHeader(event, 'x-cron-secret') ?? ''
-    const querySecret  = getQuery(event).secret as string ?? ''
+    const querySecret  = (getQuery(event).secret as string) ?? ''
 
     if (headerSecret !== cronSecret && querySecret !== cronSecret) {
-      throw createError({ statusCode: 401, message: 'Unauthorized' })
+      throw createError({ statusCode: 401, message: 'Unauthorized — añade ?secret=TU_CRON_SECRET a la URL' })
     }
   }
 

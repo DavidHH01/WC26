@@ -9,6 +9,7 @@ interface LeaderboardRow {
   exact_scores: number
   correct_results: number
   total_predicted: number
+  finished_predicted: number  // partidos ya terminados que predijiste
   rank: number
   // Computados cliente
   score?: number
@@ -44,8 +45,8 @@ interface ScorerRow {
 const { data: leaderboard, pending: loadingBoard } = await useAsyncData('leaderboard', async () => {
   const { data } = await supabase
     .from('leaderboard')
-    .select('id, username, total_points, exact_scores, correct_results, total_predicted, rank')
-    .limit(100)
+    .select('id, username, total_points, exact_scores, correct_results, total_predicted, finished_predicted, rank')
+    .limit(500)
   return (data ?? []) as LeaderboardRow[]
 })
 
@@ -81,8 +82,12 @@ function participationFactor(predicted: number): number {
 }
 
 function pppScore(row: LeaderboardRow): number {
-  if (!row.total_predicted || row.total_predicted < 10) return 0
-  const ppp = row.total_points / row.total_predicted
+  // Mínimo 10 predicciones en partidos terminados para aparecer en el ranking
+  const finished = row.finished_predicted ?? 0
+  if (finished < 10) return 0
+  // PPP = puntos ganados ÷ predicciones en partidos YA finalizados (justo para todos)
+  const ppp = row.total_points / finished
+  // Factor de participación basado en TODAS las predicciones hechas (compromiso)
   return Math.round(ppp * participationFactor(row.total_predicted) * 100) / 100
 }
 
