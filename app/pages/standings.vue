@@ -102,14 +102,24 @@ function factorColor(predicted: number): string {
   return 'text-gray-400'
 }
 
-// Leaderboard reordenado por la nueva fórmula
+// Leaderboard reordenado por la nueva fórmula — incluye TODOS los usuarios
 const rankedLeaderboard = computed(() => {
-  const rows = (leaderboard.value ?? [])
-    .filter(r => r.total_predicted >= 10)
-    .map(r => ({ ...r, score: pppScore(r) }))
+  const all = (leaderboard.value ?? [])
+  if (!all.length) return []
+
+  // Usuarios con puntuación (≥10 predicciones finalizadas)
+  const withScore = all
+    .filter(r => (r.finished_predicted ?? 0) >= 10)
+    .map(r => ({ ...r, score: pppScore(r), active: true }))
     .sort((a, b) => b.score - a.score)
-    .map((r, i) => ({ ...r, newRank: i + 1 }))
-  return rows
+
+  // Usuarios sin puntuación suficiente — al final, ordenados por puntos totales
+  const withoutScore = all
+    .filter(r => (r.finished_predicted ?? 0) < 10)
+    .map(r => ({ ...r, score: 0, active: false }))
+    .sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0))
+
+  return [...withScore, ...withoutScore].map((r, i) => ({ ...r, newRank: i + 1 }))
 })
 
 // ── Groups tab ────────────────────────────────────────────────
@@ -241,29 +251,40 @@ function rankBg(rank: number) {
               <tr class="border-b border-dark-500 text-gray-400 text-xs uppercase tracking-wider">
                 <th class="text-left px-4 py-3 font-bold w-10">#</th>
                 <th class="text-left px-4 py-3 font-bold">Usuario</th>
-                <th class="text-right px-3 py-3 font-bold hidden sm:table-cell">Preds.</th>
+                <th class="text-right px-3 py-3 font-bold hidden sm:table-cell">Jugados</th>
                 <th class="text-right px-3 py-3 font-bold hidden sm:table-cell">Factor</th>
                 <th class="text-right px-3 py-3 font-bold hidden sm:table-cell">Pts</th>
                 <th class="text-right px-4 py-3 font-bold text-wc-gold">Score</th>
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="row in rankedLeaderboard.slice(3)"
-                :key="row.id"
-                class="border-b border-dark-500/40 hover:bg-dark-700/40 transition-colors"
-              >
-                <td class="px-4 py-3 font-display font-bold text-gray-400">{{ row.newRank }}</td>
-                <td class="px-4 py-3 font-semibold">{{ row.username }}</td>
-                <td class="px-3 py-3 text-right text-gray-400 hidden sm:table-cell">{{ row.total_predicted }}</td>
-                <td :class="['px-3 py-3 text-right font-display font-bold hidden sm:table-cell', factorColor(row.total_predicted)]">
-                  {{ factorLabel(row.total_predicted) }}
-                </td>
-                <td class="px-3 py-3 text-right text-gray-400 hidden sm:table-cell">{{ row.total_points }}</td>
-                <td class="px-4 py-3 text-right font-display font-black text-wc-gold text-base">
-                  {{ row.score.toFixed(2) }}
-                </td>
-              </tr>
+              <template v-for="(row, idx) in rankedLeaderboard.slice(3)" :key="row.id">
+                <!-- Separador antes de la zona sin puntuación -->
+                <tr v-if="!row.active && (idx === 0 || rankedLeaderboard.slice(3)[idx - 1]?.active)" class="border-b border-dark-500/40">
+                  <td colspan="6" class="px-4 py-2 text-xs text-gray-500 text-center uppercase tracking-widest">
+                    — Sin predicciones suficientes —
+                  </td>
+                </tr>
+                <tr
+                  :class="[
+                    'border-b border-dark-500/40 transition-colors',
+                    row.active ? 'hover:bg-dark-700/40' : 'opacity-40 hover:opacity-60'
+                  ]"
+                >
+                  <td class="px-4 py-3 font-display font-bold text-gray-400">{{ row.newRank }}</td>
+                  <td class="px-4 py-3 font-semibold">{{ row.username }}</td>
+                  <td class="px-3 py-3 text-right text-gray-400 hidden sm:table-cell">
+                    {{ row.finished_predicted ?? 0 }}/{{ row.total_predicted ?? 0 }}
+                  </td>
+                  <td :class="['px-3 py-3 text-right font-display font-bold hidden sm:table-cell', row.active ? factorColor(row.total_predicted) : 'text-gray-600']">
+                    {{ row.active ? factorLabel(row.total_predicted) : '—' }}
+                  </td>
+                  <td class="px-3 py-3 text-right text-gray-400 hidden sm:table-cell">{{ row.total_points ?? 0 }}</td>
+                  <td class="px-4 py-3 text-right font-display font-black text-base" :class="row.active ? 'text-wc-gold' : 'text-gray-600'">
+                    {{ row.active ? row.score.toFixed(2) : '—' }}
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </AppCard>
