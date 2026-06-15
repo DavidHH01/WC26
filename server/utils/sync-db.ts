@@ -50,6 +50,18 @@ export async function syncToDatabase(
       source = src
       log.push(`[${src}] FIFA devolvió ${fifaMatches.length} partidos`)
 
+      const dbArr = dbMatches as any[]
+
+      // Normaliza: Supabase devuelve el join como objeto {code} o array [{code}]
+      const getCode = (rel: any): string | undefined => {
+        if (!rel) return undefined
+        if (Array.isArray(rel)) return rel[0]?.code
+        return rel.code
+      }
+
+      const fifaWithData = fifaMatches.filter(f => f.status !== 'scheduled' || f.homeScore !== null)
+      log.push(`${dbArr.length} partidos en BD · ${fifaWithData.length} con datos en FIFA`)
+
       for (const fm of fifaMatches) {
         if (!fm.homeCode || !fm.awayCode) continue
 
@@ -57,14 +69,12 @@ export async function syncToDatabase(
         if (fm.status === 'scheduled' && fm.homeScore == null) continue
 
         // Encontrar el partido en nuestra BD por códigos de equipos
+        // (getCode normaliza si Supabase devuelve el join como objeto o como array)
         const dbMatch = (dbMatches as any[]).find(
-          (m: any) => m.home_country?.code === fm.homeCode
-                   && m.away_country?.code === fm.awayCode
+          (m: any) => getCode(m.home_country) === fm.homeCode
+                   && getCode(m.away_country) === fm.awayCode
         )
-        if (!dbMatch) {
-          // No logueamos "no encontrado" para evitar spam (puede ser fase de grupos futura)
-          continue
-        }
+        if (!dbMatch) continue
 
         // ¿Hay cambios reales?
         const needsUpdate =
@@ -114,19 +124,21 @@ export async function syncToDatabase(
           if (!fs.playerName || fs.goals === 0) continue
           const countryId = fs.teamCode ? codeToId[fs.teamCode] : null
 
+          // Solo actualizamos goals, assists y country_id desde FIFA.
+          // Position y matches NO se sobrescriben (FIFA no los devuelve fiablemente).
+          // Si el jugador no existe aún, lo creamos con matches=0 y position=null.
+          const upsertData: Record<string, any> = {
+            player_name: fs.playerName,
+            goals:       fs.goals,
+            assists:     fs.assists,
+            updated_at:  new Date().toISOString(),
+          }
+          if (countryId) upsertData.country_id = countryId
+          if (fs.matches > 0) upsertData.matches = fs.matches
+
           const { error } = await client
             .from('top_scorers')
-            .upsert(
-              {
-                player_name: fs.playerName,
-                country_id:  countryId,
-                goals:       fs.goals,
-                assists:     fs.assists,
-                matches:     fs.matches,
-                updated_at:  new Date().toISOString(),
-              },
-              { onConflict: 'player_name' }
-            )
+            .upsert(upsertData, { onConflict: 'player_name' })
 
           if (error) {
             errors.push(`Goleador ${fs.playerName}: ${error.message}`)

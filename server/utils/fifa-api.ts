@@ -22,7 +22,7 @@ const HEADERS = {
 // ── Mapeo nombre FIFA → código de nuestra BD ────────────────────
 export const TEAM_TO_CODE: Record<string, string> = {
   // Inglés / codes FIFA
-  'Mexico': 'MEX', 'South Africa': 'RSA', 'South Korea': 'KOR',
+  'Mexico': 'MEX', 'South Africa': 'RSA', 'South Korea': 'KOR', 'Korea Republic': 'KOR', 'Republic of Korea': 'KOR',
   'Czech Republic': 'CZE', 'Czechia': 'CZE',
   'Canada': 'CAN', 'Bosnia and Herzegovina': 'BIH', 'Bosnia & Herzegovina': 'BIH',
   'Qatar': 'QAT', 'Switzerland': 'SUI',
@@ -102,49 +102,76 @@ let _cachedSeasonId: string | null = SEASON_ID || null
 export async function getSeasonId(): Promise<string> {
   if (_cachedSeasonId) return _cachedSeasonId
 
-  // Intenta extraerlo de la página del torneo
+  // 1) Método más fiable: filtrar por fecha 2026 y leer IdSeason del primer resultado
+  //    (probado y funciona: devuelve IdSeason "285023" para WC2026)
   try {
     const res = await fetch(
-      'https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026',
-      { headers: HEADERS }
+      `${FIFA_API}/calendar/matches?language=en&count=3&idCompetition=${COMPETITION_ID}&from=2026-06-01`,
+      { headers: HEADERS, signal: AbortSignal.timeout(10000) }
     )
-    const html = await res.text()
-
-    // Busca en __NEXT_DATA__ o en URLs de la página
-    const patterns = [
-      /"idSeason":"?(\d{5,7})"?/,
-      /idSeason=(\d{5,7})/,
-      /"IdSeason":"?(\d{5,7})"?/,
-    ]
-    for (const pat of patterns) {
-      const m = html.match(pat)
-      if (m?.[1]) {
-        _cachedSeasonId = m[1]
+    if (res.ok) {
+      const data = await res.json()
+      const firstId = data?.Results?.[0]?.IdSeason
+      if (firstId && String(firstId) !== '1') {
+        _cachedSeasonId = String(firstId)
         console.log(`[FIFA] Season ID autodescubierto: ${_cachedSeasonId}`)
         return _cachedSeasonId
       }
     }
   } catch (e) {
-    console.warn('[FIFA] No se pudo autodescubrir el Season ID:', e)
+    console.warn('[FIFA] Autodescubrimiento falló:', e)
   }
 
-  // Fallback: prueba los IDs más probables para 2026
-  for (const candidate of ['278514', '285063', '290945', '299814']) {
+  // 2) Intenta la página HTML del torneo buscando patrones de ID
+  try {
+    const res = await fetch(
+      'https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026',
+      { headers: HEADERS, signal: AbortSignal.timeout(10000) }
+    )
+    if (res.ok) {
+      const html = await res.text()
+      const patterns = [
+        /"idSeason":"?(\d{5,7})"?/,
+        /"IdSeason":"?(\d{5,7})"?/,
+        /idSeason=(\d{5,7})/,
+        /season[_-]?id[":=\s]+(\d{5,7})/i,
+      ]
+      for (const pat of patterns) {
+        const m = html.match(pat)
+        if (m?.[1]) {
+          _cachedSeasonId = m[1]
+          console.log(`[FIFA] Season ID desde HTML: ${_cachedSeasonId}`)
+          return _cachedSeasonId
+        }
+      }
+    }
+  } catch {}
+
+  // 4) Prueba fuerza bruta con IDs candidatos para 2026
+  // WC2018=150083, WC2022=255711 → WC2026 probablemente en rango 280000–340000
+  const candidates = [
+    '285023', // WC2026 confirmado
+    '300765', '303235', '311234', '315096', '316459', '317808',
+    '299814', '298032', '295368', '290945', '288018', '285063',
+    '282610', '280150', '278514',
+  ]
+  for (const candidate of candidates) {
     try {
       const res = await fetch(
         `${FIFA_API}/calendar/matches?language=en&count=1&idCompetition=${COMPETITION_ID}&idSeason=${candidate}`,
-        { headers: HEADERS }
+        { headers: HEADERS, signal: AbortSignal.timeout(5000) }
       )
+      if (!res.ok) continue
       const data = await res.json()
       if (data?.Results?.length > 0) {
         _cachedSeasonId = candidate
-        console.log(`[FIFA] Season ID por prueba: ${_cachedSeasonId}`)
+        console.log(`[FIFA] Season ID por prueba de candidatos: ${_cachedSeasonId}`)
         return _cachedSeasonId
       }
     } catch {}
   }
 
-  throw new Error('No se pudo determinar el Season ID de FIFA 2026. Configura FIFA_SEASON_ID en .env')
+  throw new Error('No se pudo determinar el Season ID de FIFA 2026. Por favor, configura FIFA_SEASON_ID en .env')
 }
 
 // ── Fetch de partidos ────────────────────────────────────────────
@@ -168,21 +195,42 @@ export async function fetchFIFAMatches(): Promise<FIFAMatch[]> {
   const results: FIFAMatch[] = []
 
   for (const m of data?.Results ?? []) {
-    // MatchStatus: 0=programado, 1=en vivo, 3=finalizado, 4=aplazado
-    const statusCode: number = m.MatchStatus ?? 0
-    let status: 'scheduled' | 'live' | 'finished' = 'scheduled'
-    if (statusCode === 1)                        status = 'live'
-    else if (statusCode === 3 || statusCode === 5) status = 'finished'
-
     const home = m.Home ?? m.HomeTeam
     const away = m.Away ?? m.AwayTeam
+    const homeScore: number | null = home?.Score ?? null
+    const awayScore: number | null = away?.Score ?? null
+
+    // Detección de estado:
+    // MatchStatus=1 → en vivo
+    // MatchStatus=3/5 → finalizado
+    // MatchStatus=0 con OfficialityStatus=1 y marcador → también finalizado
+    // (la API WC2026 devuelve MatchStatus=0 para partidos terminados)
+    const matchStatus: number = m.MatchStatus ?? 0
+    const officialityStatus: number = m.OfficialityStatus ?? 0
+    const matchTime: string | null = m.MatchTime ?? null
+
+    // Detección de estado (WC2026 usa MatchStatus=0 para todo cuando no está en juego):
+    // - OfficialityStatus=1  → resultado oficial → FINALIZADO
+    // - MatchStatus=1        → en juego (fifa live feed)
+    // - MatchStatus=0 + scores + MatchTime sin OfficialityStatus → EN JUEGO
+    // - MatchStatus=3/5      → finalizado (formato antiguo FIFA)
+    let status: 'scheduled' | 'live' | 'finished' = 'scheduled'
+    if (matchStatus === 3 || matchStatus === 5) {
+      status = 'finished'
+    } else if (officialityStatus >= 1 && homeScore !== null && awayScore !== null) {
+      // Marcador oficial publicado → partido terminado
+      status = 'finished'
+    } else if (matchStatus === 1 || (homeScore !== null && matchTime !== null && officialityStatus === 0)) {
+      // En juego: MatchStatus=1 o tiene marcador+minuto pero aún no es oficial
+      status = 'live'
+    }
 
     results.push({
       idMatch:   String(m.IdMatch),
       homeCode:  resolveCode(home),
       awayCode:  resolveCode(away),
-      homeScore: home?.Score ?? null,
-      awayScore: away?.Score ?? null,
+      homeScore,
+      awayScore,
       status,
       date:      m.Date ?? m.LocalDate ?? '',
     })
@@ -214,21 +262,38 @@ export async function fetchFIFAScorers(): Promise<FIFAScorer[]> {
       const res = await fetch(url, { headers: HEADERS })
       if (!res.ok) continue
       const data = await res.json()
-      const list = data?.Results ?? data?.TopScorers ?? []
+      const list: any[] = data?.Results ?? data?.TopScorers ?? []
       if (!list.length) continue
 
       return list.map((s: any) => {
-        const name = (teamName(s.Player ?? s, 'en-US')
-                  || teamName(s.Player ?? s, 'es-ES')
-                  || s.PlayerName) ?? ''
+        // PlayerName es un array [{Locale, Description}] — igual que TeamName
+        const playerNameArr: any[] = s.PlayerName ?? []
+        const playerName = Array.isArray(playerNameArr)
+          ? (playerNameArr.find((n: any) => n.Locale === 'en-GB')?.Description
+             ?? playerNameArr[0]?.Description
+             ?? '')
+          : String(playerNameArr)
+
+        // teamCode: usar IdCountry directamente (ya viene como código ISO)
+        const teamCode: string | null = s.IdCountry
+          ? (TEAM_TO_CODE[s.IdCountry] ?? s.IdCountry)
+          : resolveCode(s)
+
+        // Partidos jugados: la API WC2026 devuelve Matches=null; usamos MinutesPlayed
+        // como estimación (90min ≈ 1 partido completo)
+        const minutesPlayed: number | null = s.MinutesPlayed ?? null
+        const matchesPlayed: number =
+          s.Matches ?? s.PlayedMatchs ?? s.MatchesPlayed
+          ?? (minutesPlayed != null ? Math.max(1, Math.round(minutesPlayed / 90)) : 0)
+
         return {
-          playerName: name,
-          teamCode:   resolveCode(s),
-          goals:      s.Goals ?? s.GoalCount ?? 0,
-          assists:    s.Assists ?? s.AssistCount ?? 0,
-          matches:    s.PlayedMatchs ?? s.MatchesPlayed ?? 0,
+          playerName,
+          teamCode,
+          goals:   s.Goals   ?? s.GoalCount   ?? 0,
+          assists: s.Assists  ?? s.AssistCount ?? 0,
+          matches: matchesPlayed,
         }
-      })
+      }).filter((s: FIFAScorer) => s.playerName && s.goals > 0)
     } catch {}
   }
 

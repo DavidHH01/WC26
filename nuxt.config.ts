@@ -4,8 +4,10 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   // Service role key para el auto-sync server-side
+  // Nuxt lee automáticamente NUXT_SUPABASE_SERVICE_ROLE_KEY en producción;
+  // en desarrollo, asignamos explícitamente desde process.env
   runtimeConfig: {
-    supabaseServiceRoleKey: '',
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY ?? '',
   },
 
   nitro: {

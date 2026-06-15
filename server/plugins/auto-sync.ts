@@ -14,8 +14,8 @@ import { syncToDatabase } from '../utils/sync-db'
 export default defineNitroPlugin(async () => {
   // ── Leer configuración ───────────────────────────────────────────────────
   const config         = useRuntimeConfig()
-  const supabaseUrl    = (process.env.SUPABASE_URL ?? '') as string
-  const serviceRoleKey = (config.supabaseServiceRoleKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '') as string
+  const supabaseUrl    = process.env.SUPABASE_URL ?? ''
+  const serviceRoleKey = (config.supabaseServiceRoleKey as string) || (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '')
 
   if (!supabaseUrl || !serviceRoleKey) {
     console.warn('[AutoSync] ⚠️  SUPABASE_SERVICE_ROLE_KEY no configurada — sync automático desactivado.')
