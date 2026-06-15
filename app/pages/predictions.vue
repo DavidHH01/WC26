@@ -2,6 +2,34 @@
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 
+// ── Types ─────────────────────────────────────────────────────
+interface PredCountry {
+  id: number
+  name: string
+  code: string
+  flag: string
+}
+interface PredMatch {
+  id: number
+  match_round: number
+  match_date: string
+  status: string
+  home_score: number | null
+  away_score: number | null
+  home_fifa_points: number | null
+  away_fifa_points: number | null
+  home_country: PredCountry | null
+  away_country: PredCountry | null
+  group: { name: string } | null
+}
+interface Prediction {
+  id: number
+  match_id: number
+  home_score: number | null
+  away_score: number | null
+  points_earned: number | null
+}
+
 // ── Fetch matches ─────────────────────────────────────────────
 const { data: matches, pending: loadingMatches } = await useAsyncData('group-matches', async () => {
   const { data } = await supabase
@@ -15,24 +43,30 @@ const { data: matches, pending: loadingMatches } = await useAsyncData('group-mat
     `)
     .eq('stage', 'group')
     .order('match_date')
-  return data ?? []
+  return (data ?? []) as PredMatch[]
 })
 
 // ── Fetch user predictions ────────────────────────────────────
 const { data: savedPreds, refresh: refreshPreds } = await useAsyncData('my-preds', async () => {
-  if (!user.value) return []
+  if (!user.value) return [] as Prediction[]
   const { data } = await supabase
     .from('predictions')
     .select('id, match_id, home_score, away_score, points_earned')
-  return data ?? []
+  return (data ?? []) as Prediction[]
 })
 
 // ── Local input state ─────────────────────────────────────────
 type Input = { home: number | null; away: number | null }
-const inputs  = reactive<Record<number, Input>>({})
+const inputs  = reactive({} as Record<number, Input>)
 const dirty   = reactive<Record<number, boolean>>({})
 const saving  = reactive<Record<number, boolean>>({})
 const saveErr = reactive<Record<number, string>>({})
+
+// Helper: ensures inputs[id] always exists (safe for v-model)
+function getInput(id: number): Input {
+  if (!inputs[id]) inputs[id] = { home: null, away: null }
+  return inputs[id]
+}
 
 // Initialize all match inputs (ensures inputs[m.id] always exists → clean v-model)
 watch(matches, (ms) => {
@@ -64,8 +98,8 @@ async function save(matchId: number) {
   if (home === null || home === undefined || away === null || away === undefined) return
 
   saving[matchId] = true
-  const { error } = await supabase
-    .from('predictions')
+  const { error } = await (supabase
+    .from('predictions') as any)
     .upsert({ user_id: user.value!.id, match_id: matchId, home_score: home, away_score: away },
              { onConflict: 'user_id,match_id' })
 
@@ -259,7 +293,7 @@ function potentialPts(m: any) {
               <!-- SCHEDULED/LIVE: prediction inputs -->
               <template v-else>
                 <input
-                  v-model.number="inputs[m.id].home"
+                  v-model.number="getInput(m.id).home"
                   type="number" min="0" max="20"
                   :disabled="isLocked(m)"
                   class="score-input"
@@ -268,7 +302,7 @@ function potentialPts(m: any) {
                 >
                 <span class="text-gray-400 font-bold">—</span>
                 <input
-                  v-model.number="inputs[m.id].away"
+                  v-model.number="getInput(m.id).away"
                   type="number" min="0" max="20"
                   :disabled="isLocked(m)"
                   class="score-input"
@@ -327,11 +361,11 @@ function potentialPts(m: any) {
             <div class="text-right">
               <!-- Partido terminado: puntos reales -->
               <template v-if="m.status === 'finished' && predFor(m.id)">
-                <span :class="['font-display font-black text-xl', resultClass(predFor(m.id)!.points_earned)]">
-                  +{{ predFor(m.id)!.points_earned }} pts
+                <span :class="['font-display font-black text-xl', resultClass(predFor(m.id)!.points_earned ?? 0)]">
+                  +{{ predFor(m.id)!.points_earned ?? 0 }} pts
                 </span>
-                <p :class="['text-sm mt-0.5 font-medium', resultClass(predFor(m.id)!.points_earned)]">
-                  {{ resultLabel(predFor(m.id)!.points_earned) }}
+                <p :class="['text-sm mt-0.5 font-medium', resultClass(predFor(m.id)!.points_earned ?? 0)]">
+                  {{ resultLabel(predFor(m.id)!.points_earned ?? 0) }}
                 </p>
               </template>
               <!-- Partido abierto: puntos potenciales -->

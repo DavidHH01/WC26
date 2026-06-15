@@ -1,13 +1,49 @@
 <script setup lang="ts">
 const supabase = useSupabaseClient()
 
+// ── Types ─────────────────────────────────────────────────────
+interface LeaderboardRow {
+  id: string
+  username: string
+  total_points: number
+  exact_scores: number
+  correct_results: number
+  total_predicted: number
+  rank: number
+}
+interface GroupStandingRow {
+  id: number
+  group_name: string
+  position: number
+  name: string
+  code: string
+  flag: string
+  played: number
+  wins: number
+  draws: number
+  losses: number
+  goals_for: number
+  goals_against: number
+  goal_diff: number
+  group_points: number
+}
+interface ScorerRow {
+  id: number
+  player_name: string
+  position: string | null
+  goals: number
+  assists: number
+  matches: number
+  country: { name: string; code: string; flag: string } | null
+}
+
 // ── Fetch leaderboard ─────────────────────────────────────────
 const { data: leaderboard, pending: loadingBoard } = await useAsyncData('leaderboard', async () => {
   const { data } = await supabase
     .from('leaderboard')
     .select('id, username, total_points, exact_scores, correct_results, total_predicted, rank')
     .limit(100)
-  return data ?? []
+  return (data ?? []) as LeaderboardRow[]
 })
 
 // ── Fetch group standings ─────────────────────────────────────
@@ -15,7 +51,7 @@ const { data: groupRows, pending: loadingGroups } = await useAsyncData('group-st
   const { data } = await supabase
     .from('group_standings')
     .select('*')
-  return data ?? []
+  return (data ?? []) as GroupStandingRow[]
 })
 
 // ── Fetch top scorers ─────────────────────────────────────────
@@ -29,7 +65,7 @@ const { data: scorers, pending: loadingScorers } = await useAsyncData('top-score
     .order('goals', { ascending: false })
     .order('assists', { ascending: false })
     .limit(50)
-  return data ?? []
+  return (data ?? []) as ScorerRow[]
 })
 
 // ── Groups tab ────────────────────────────────────────────────
@@ -38,8 +74,8 @@ const selectedGroup = ref('A')
 
 const groupStandings = computed(() =>
   (groupRows.value ?? [])
-    .filter((r: any) => r.group_name === selectedGroup.value)
-    .sort((a: any, b: any) => a.position - b.position)
+    .filter(r => r.group_name === selectedGroup.value)
+    .sort((a, b) => a.position - b.position)
 )
 
 // ── Tabs ──────────────────────────────────────────────────────

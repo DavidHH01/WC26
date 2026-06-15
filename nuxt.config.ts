@@ -3,6 +3,21 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
+  // Service role key para el auto-sync server-side
+  runtimeConfig: {
+    supabaseServiceRoleKey: '',
+  },
+
+  nitro: {
+    typescript: {
+      tsConfig: {
+        compilerOptions: {
+          types: ['node'],
+        },
+      },
+    },
+  },
+
   modules: [
     '@nuxtjs/tailwindcss',
     '@nuxtjs/supabase',
