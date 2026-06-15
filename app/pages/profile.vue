@@ -2,6 +2,38 @@
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 
+// ── Types ─────────────────────────────────────────────────────
+interface ProfileData {
+  id: string
+  username: string
+  total_points: number
+  total_predicted: number
+  exact_scores: number
+  correct_results: number
+  avatar_url: string | null
+}
+interface HistoryCountry {
+  name: string; code: string; flag: string
+}
+interface HistoryMatch {
+  id: number
+  match_date: string
+  status: string
+  home_score: number | null
+  away_score: number | null
+  home_country: HistoryCountry | null
+  away_country: HistoryCountry | null
+  group: { name: string } | null
+}
+interface HistoryPred {
+  id: number
+  home_score: number | null
+  away_score: number | null
+  points_earned: number | null
+  created_at: string
+  match: HistoryMatch | null
+}
+
 // ── Fetch profile ─────────────────────────────────────────────
 const { data: profile, refresh: refreshProfile } = await useAsyncData('my-profile', async () => {
   if (!user.value) return null
@@ -10,12 +42,12 @@ const { data: profile, refresh: refreshProfile } = await useAsyncData('my-profil
     .select('*')
     .eq('id', user.value.id)
     .single()
-  return data
+  return data as ProfileData | null
 })
 
 // ── Fetch prediction history ──────────────────────────────────
 const { data: history } = await useAsyncData('pred-history', async () => {
-  if (!user.value) return []
+  if (!user.value) return [] as HistoryPred[]
   const { data } = await supabase
     .from('predictions')
     .select(`
@@ -28,7 +60,7 @@ const { data: history } = await useAsyncData('pred-history', async () => {
       )
     `)
     .order('created_at', { ascending: false })
-  return data ?? []
+  return (data ?? []) as HistoryPred[]
 })
 
 // ── Logout ────────────────────────────────────────────────────
@@ -45,19 +77,22 @@ function fmtDate(s: string) {
   }).format(new Date(s))
 }
 
-function resultLabel(pts: number) {
-  if (pts >= 3) return pts > 3 ? 'Exacto +bonus' : 'Exacto'
-  if (pts >= 1) return pts > 1 ? 'Acertado +bonus' : 'Acertado'
+function resultLabel(pts: number | null) {
+  const p = pts ?? 0
+  if (p >= 3) return p > 3 ? 'Exacto +bonus' : 'Exacto'
+  if (p >= 1) return p > 1 ? 'Acertado +bonus' : 'Acertado'
   return 'Fallado'
 }
-function resultClass(pts: number) {
-  if (pts >= 3) return 'text-wc-green'
-  if (pts >= 1) return 'text-blue-400'
+function resultClass(pts: number | null) {
+  const p = pts ?? 0
+  if (p >= 3) return 'text-wc-green'
+  if (p >= 1) return 'text-blue-400'
   return 'text-gray-500'
 }
-function resultBg(pts: number) {
-  if (pts >= 3) return 'bg-wc-green/10 border-wc-green/20'
-  if (pts >= 1) return 'bg-blue-500/10 border-blue-500/20'
+function resultBg(pts: number | null) {
+  const p = pts ?? 0
+  if (p >= 3) return 'bg-wc-green/10 border-wc-green/20'
+  if (p >= 1) return 'bg-blue-500/10 border-blue-500/20'
   return 'bg-dark-700 border-dark-500'
 }
 
@@ -150,7 +185,7 @@ const accuracy = computed(() => {
             <p class="font-display font-black text-xs uppercase text-gray-400">
               Gr. {{ p.match?.group?.name }}
             </p>
-            <p class="text-xs text-gray-400">{{ fmtDate(p.match?.match_date) }}</p>
+            <p class="text-xs text-gray-400">{{ fmtDate(p.match?.match_date ?? '') }}</p>
           </div>
 
           <!-- Match -->

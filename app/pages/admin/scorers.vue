@@ -3,13 +3,30 @@ definePageMeta({ layout: 'admin', middleware: 'admin' })
 
 const supabase = useSupabaseClient()
 
+// ── Types ──────────────────────────────────────────────────────
+interface AdminCountry {
+  id: number
+  name: string
+  code: string
+  flag: string
+}
+interface AdminScorer {
+  id: number
+  player_name: string
+  position: string | null
+  goals: number
+  assists: number
+  matches: number
+  country: AdminCountry | null
+}
+
 // ── Countries for select ──────────────────────────────────────
 const { data: countries } = await useAsyncData('admin-countries', async () => {
   const { data } = await supabase
     .from('countries')
     .select('id, name, code, flag')
     .order('name')
-  return data ?? []
+  return (data ?? []) as AdminCountry[]
 })
 
 // ── Fetch scorers ─────────────────────────────────────────────
@@ -19,7 +36,7 @@ const { data: scorers, refresh } = await useAsyncData('admin-scorers', async () 
     .select(`id, player_name, position, goals, assists, matches, country:countries(id, name, code, flag)`)
     .order('goals', { ascending: false })
     .order('assists', { ascending: false })
-  return data ?? []
+  return (data ?? []) as AdminScorer[]
 })
 
 // ── New scorer form ───────────────────────────────────────────
@@ -42,7 +59,7 @@ async function addScorer() {
   }
   saving.value = true
   formErr.value = ''
-  const { error } = await supabase.from('top_scorers').insert({
+  const { error } = await (supabase.from('top_scorers') as any).insert({
     player_name: form.player_name.trim(),
     country_id: form.country_id,
     position: form.position,
@@ -61,11 +78,16 @@ async function addScorer() {
 
 // ── Inline edit ───────────────────────────────────────────────
 type ScorerRow = { goals: number; assists: number; matches: number }
-const edits = reactive<Record<number, ScorerRow>>({})
+const edits     = reactive({} as Record<number, ScorerRow>)
 const savingRow = reactive<Record<number, boolean>>({})
 const savedRow  = reactive<Record<number, boolean>>({})
 
-function startEdit(s: any) {
+function getEdit(id: number): ScorerRow {
+  if (!edits[id]) edits[id] = { goals: 0, assists: 0, matches: 0 }
+  return edits[id]
+}
+
+function startEdit(s: AdminScorer) {
   edits[s.id] = { goals: s.goals, assists: s.assists, matches: s.matches }
 }
 
@@ -76,8 +98,8 @@ watch(scorers, (ss) => {
 async function saveRow(id: number) {
   savingRow[id] = true
   delete savedRow[id]
-  const { error } = await supabase
-    .from('top_scorers')
+  const { error } = await (supabase
+    .from('top_scorers') as any)
     .update({ ...edits[id], updated_at: new Date().toISOString() })
     .eq('id', id)
   if (!error) {
@@ -90,7 +112,7 @@ async function saveRow(id: number) {
 
 async function deleteScorer(id: number) {
   if (!confirm('¿Eliminar este goleador?')) return
-  await supabase.from('top_scorers').delete().eq('id', id)
+  await (supabase.from('top_scorers') as any).delete().eq('id', id)
   await refresh()
 }
 
@@ -210,7 +232,7 @@ import { playerImageByName } from '~/utils/players'
             <!-- Matches (editable) -->
             <td class="px-3 py-3 text-center">
               <input
-                v-model.number="edits[s.id].matches"
+                v-model.number="getEdit(s.id).matches"
                 type="number" min="0" max="20"
                 class="admin-num-input"
               >
@@ -219,7 +241,7 @@ import { playerImageByName } from '~/utils/players'
             <!-- Assists (editable) -->
             <td class="px-3 py-3 text-center">
               <input
-                v-model.number="edits[s.id].assists"
+                v-model.number="getEdit(s.id).assists"
                 type="number" min="0" max="99"
                 class="admin-num-input"
               >
@@ -228,7 +250,7 @@ import { playerImageByName } from '~/utils/players'
             <!-- Goals (editable) -->
             <td class="px-3 py-3 text-center">
               <input
-                v-model.number="edits[s.id].goals"
+                v-model.number="getEdit(s.id).goals"
                 type="number" min="0" max="99"
                 class="admin-num-input text-wc-gold font-display font-black text-lg"
               >

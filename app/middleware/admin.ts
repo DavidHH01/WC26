@@ -10,5 +10,5 @@ export default defineNuxtRouteMiddleware(async () => {
     .eq('id', user.value.id)
     .single()
 
-  if (!data?.is_admin) return navigateTo('/')
+  if (!(data as any)?.is_admin) return navigateTo('/')
 })
