@@ -12,6 +12,16 @@ import { createClient } from '@supabase/supabase-js'
 import { syncToDatabase } from '../utils/sync-db'
 
 export default defineNitroPlugin(async () => {
+  // ── Solo en desarrollo / servidor persistente ────────────────────────────
+  // En Vercel (serverless) setInterval NO persiste entre invocaciones, así que
+  // este bucle no sirve en producción. Allí la sincronización la dispara el
+  // cliente vía /api/sync-auto (ver app/plugins/auto-sync.client.ts).
+  // Lo dejamos activo en local para tener datos frescos durante el desarrollo.
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[AutoSync] Producción detectada — sync por cliente (/api/sync-auto), bucle interno desactivado.')
+    return
+  }
+
   // ── Leer configuración ───────────────────────────────────────────────────
   const config         = useRuntimeConfig()
   const supabaseUrl    = process.env.SUPABASE_URL ?? ''

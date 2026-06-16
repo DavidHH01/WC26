@@ -48,6 +48,8 @@ const { data: profile, refresh: refreshProfile } = await useAsyncData('my-profil
 // ── Fetch prediction history ──────────────────────────────────
 const { data: history } = await useAsyncData('pred-history', async () => {
   if (!user.value) return [] as HistoryPred[]
+  // Filtrar por user_id: desde la migración 009 la RLS también expone las
+  // predicciones de otros en partidos finalizados.
   const { data } = await supabase
     .from('predictions')
     .select(`
@@ -59,6 +61,7 @@ const { data: history } = await useAsyncData('pred-history', async () => {
         group:groups(name)
       )
     `)
+    .eq('user_id', user.value.id)
     .order('created_at', { ascending: false })
   return (data ?? []) as HistoryPred[]
 })

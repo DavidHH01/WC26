@@ -49,9 +49,13 @@ const { data: matches, pending: loadingMatches } = await useAsyncData('group-mat
 // ── Fetch user predictions ────────────────────────────────────
 const { data: savedPreds, refresh: refreshPreds } = await useAsyncData('my-preds', async () => {
   if (!user.value) return [] as Prediction[]
+  // IMPORTANTE: filtrar por user_id. Desde la migración 009, la RLS también
+  // deja ver predicciones de OTROS en partidos finalizados, así que sin este
+  // filtro se colarían y el contador subiría por encima de 72.
   const { data } = await supabase
     .from('predictions')
     .select('id, match_id, home_score, away_score, points_earned')
+    .eq('user_id', user.value.id)
   return (data ?? []) as Prediction[]
 })
 
@@ -397,6 +401,16 @@ function potentialPts(m: any) {
               </template>
             </div>
           </div>
+
+          <!-- Predicciones de todos (solo partidos finalizados) -->
+          <MatchPredictions
+            v-if="m.status === 'finished'"
+            :match-id="m.id"
+            :home-score="m.home_score"
+            :away-score="m.away_score"
+            :home-code="m.home_country?.code"
+            :away-code="m.away_country?.code"
+          />
         </div>
       </AppCard>
 

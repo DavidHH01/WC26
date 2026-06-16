@@ -189,95 +189,79 @@ import { playerImageByName } from '~/utils/players'
         No hay goleadores aún. Añade el primero arriba.
       </p>
 
-      <table v-else class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-dark-500 text-gray-400 text-xs uppercase tracking-wider">
-            <th class="text-left px-4 py-3 font-bold">Jugador</th>
-            <th class="text-center px-3 py-3 font-bold">Pos</th>
-            <th class="text-center px-3 py-3 font-bold">PJ</th>
-            <th class="text-center px-3 py-3 font-bold">Asist.</th>
-            <th class="text-center px-3 py-3 font-bold text-wc-gold">Goles</th>
-            <th class="text-right px-4 py-3 font-bold">Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="s in scorers"
-            :key="s.id"
-            class="border-b border-dark-500/40 hover:bg-dark-700/30 transition-colors"
-          >
-            <!-- Player -->
-            <td class="px-4 py-3">
-              <div class="flex items-center gap-3">
-                <img
-                  v-if="playerImageByName(s.player_name)"
-                  :src="playerImageByName(s.player_name)"
-                  :alt="s.player_name"
-                  class="w-8 h-8 rounded-full object-cover object-top border border-dark-400 bg-dark-700 shrink-0"
-                />
-                <CountryFlag v-else :code="s.country?.code" :name="s.country?.name" :size="20" />
-                <div>
-                  <p class="font-semibold text-white">{{ s.player_name }}</p>
-                  <p class="text-xs text-gray-500 flex items-center gap-1">
-                    <CountryFlag :code="s.country?.code" :name="s.country?.name" :size="12" />
-                    {{ s.country?.name }}
-                  </p>
-                </div>
-              </div>
-            </td>
+      <ul v-else class="divide-y divide-dark-500/40">
+        <li
+          v-for="s in scorers"
+          :key="s.id"
+          class="p-3 sm:px-4 sm:py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 hover:bg-dark-700/30 transition-colors"
+        >
+          <!-- Jugador -->
+          <div class="flex items-center gap-3 min-w-0 sm:flex-1">
+            <img
+              v-if="playerImageByName(s.player_name)"
+              :src="playerImageByName(s.player_name)"
+              :alt="s.player_name"
+              class="w-9 h-9 rounded-full object-cover object-top border border-dark-400 bg-dark-700 shrink-0"
+            />
+            <CountryFlag v-else :code="s.country?.code" :name="s.country?.name" :size="20" />
+            <div class="min-w-0">
+              <p class="font-semibold text-white truncate">
+                {{ s.player_name }}
+                <span class="text-gray-500 font-display font-bold ml-1">{{ s.position ?? '' }}</span>
+              </p>
+              <p class="text-xs text-gray-500 flex items-center gap-1 truncate">
+                <CountryFlag :code="s.country?.code" :name="s.country?.name" :size="12" />
+                {{ s.country?.name }}
+              </p>
+            </div>
+          </div>
 
-            <!-- Position -->
-            <td class="px-3 py-3 text-center text-gray-400 font-display font-bold">{{ s.position ?? '—' }}</td>
-
-            <!-- Matches (editable) -->
-            <td class="px-3 py-3 text-center">
+          <!-- Stats editables + acciones -->
+          <div class="flex items-end gap-3 flex-wrap sm:flex-nowrap sm:shrink-0">
+            <label class="flex flex-col items-center gap-1">
+              <span class="text-[0.65rem] uppercase tracking-wider text-gray-500 font-bold">PJ</span>
               <input
                 v-model.number="getEdit(s.id).matches"
                 type="number" min="0" max="20"
                 class="admin-num-input"
               >
-            </td>
-
-            <!-- Assists (editable) -->
-            <td class="px-3 py-3 text-center">
+            </label>
+            <label class="flex flex-col items-center gap-1">
+              <span class="text-[0.65rem] uppercase tracking-wider text-gray-500 font-bold">Asist.</span>
               <input
                 v-model.number="getEdit(s.id).assists"
                 type="number" min="0" max="99"
                 class="admin-num-input"
               >
-            </td>
-
-            <!-- Goals (editable) -->
-            <td class="px-3 py-3 text-center">
+            </label>
+            <label class="flex flex-col items-center gap-1">
+              <span class="text-[0.65rem] uppercase tracking-wider text-wc-gold font-bold">Goles</span>
               <input
                 v-model.number="getEdit(s.id).goals"
                 type="number" min="0" max="99"
                 class="admin-num-input text-wc-gold font-display font-black text-lg"
               >
-            </td>
+            </label>
 
-            <!-- Actions -->
-            <td class="px-4 py-3 text-right">
-              <div class="flex items-center justify-end gap-2">
-                <span v-if="savedRow[s.id]" class="text-xs text-wc-green font-bold">✓</span>
-                <button
-                  :disabled="savingRow[s.id]"
-                  class="btn-primary btn-sm"
-                  @click="saveRow(s.id)"
-                >
-                  {{ savingRow[s.id] ? '…' : 'Guardar' }}
-                </button>
-                <button
-                  class="btn-danger btn-sm"
-                  @click="deleteScorer(s.id)"
-                >
-                  ✕
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            <div class="flex items-center gap-2 ml-auto sm:ml-0 pb-0.5">
+              <span v-if="savedRow[s.id]" class="text-xs text-wc-green font-bold">✓</span>
+              <button
+                :disabled="savingRow[s.id]"
+                class="btn-primary btn-sm"
+                @click="saveRow(s.id)"
+              >
+                {{ savingRow[s.id] ? '…' : 'Guardar' }}
+              </button>
+              <button
+                class="btn-danger btn-sm"
+                @click="deleteScorer(s.id)"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </li>
+      </ul>
     </AppCard>
   </div>
 </template>

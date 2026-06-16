@@ -264,31 +264,40 @@ export async function scrapeScorers(): Promise<FIFAScorer[]> {
   return []
 }
 
-// ─── Wrapper con fallback a FIFA API ─────────────────────────────────────────
+// ─── Obtención de datos: API FIFA como fuente principal ──────────────────────
+//
+// NOTA: FIFA.com renderiza en el cliente (no embebe __NEXT_DATA__ en el HTML
+// del servidor), por lo que el scraping HTML siempre falla. La "API interna"
+// de FIFA (api.fifa.com) es exactamente la misma fuente que alimenta su web:
+// es pública, fiable y rápida. Por eso la usamos como método PRIMARIO.
+// Dejamos el scraping HTML como último recurso por si algún día sirve datos SSR.
+
 export async function scrapeOrFetchMatches(): Promise<{ matches: FIFAMatch[]; source: string }> {
-  // Primero intenta scraping HTML
+  // 1) API oficial de FIFA (fuente real)
   try {
-    const matches = await scrapeMatches()
-    if (matches.length > 0) return { matches, source: 'html-scrape' }
+    const { fetchFIFAMatches } = await import('./fifa-api')
+    const matches = await fetchFIFAMatches()
+    if (matches.length > 0) return { matches, source: 'fifa-api' }
   } catch (e: any) {
-    console.warn(`[Scraper] HTML parse falló (${e.message}), usando API FIFA...`)
+    console.warn(`[Sync] API FIFA falló (${e.message}), intentando scrape HTML...`)
   }
 
-  // Fallback: API interna de FIFA (misma que usa su web)
-  const { fetchFIFAMatches } = await import('./fifa-api')
-  const matches = await fetchFIFAMatches()
-  return { matches, source: 'api-fallback' }
+  // 2) Último recurso: scrape HTML
+  const matches = await scrapeMatches()
+  return { matches, source: 'html-scrape' }
 }
 
 export async function scrapeOrFetchScorers(): Promise<{ scorers: FIFAScorer[]; source: string }> {
+  // 1) API oficial de FIFA
   try {
-    const scorers = await scrapeScorers()
-    if (scorers.length > 0) return { scorers, source: 'html-scrape' }
+    const { fetchFIFAScorers } = await import('./fifa-api')
+    const scorers = await fetchFIFAScorers()
+    if (scorers.length > 0) return { scorers, source: 'fifa-api' }
   } catch (e: any) {
-    console.warn(`[Scraper] Goleadores HTML parse falló (${e.message}), usando API FIFA...`)
+    console.warn(`[Sync] API goleadores FIFA falló (${e.message}), intentando scrape HTML...`)
   }
 
-  const { fetchFIFAScorers } = await import('./fifa-api')
-  const scorers = await fetchFIFAScorers()
-  return { scorers, source: 'api-fallback' }
+  // 2) Último recurso: scrape HTML
+  const scorers = await scrapeScorers()
+  return { scorers, source: 'html-scrape' }
 }
