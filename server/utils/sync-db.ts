@@ -65,9 +65,6 @@ export async function syncToDatabase(
       for (const fm of fifaMatches) {
         if (!fm.homeCode || !fm.awayCode) continue
 
-        // Solo hay datos que actualizar si el partido está en juego o terminado
-        if (fm.status === 'scheduled' && fm.homeScore == null) continue
-
         // Encontrar el partido en nuestra BD por códigos de equipos
         // (getCode normaliza si Supabase devuelve el join como objeto o como array)
         const dbMatch = (dbMatches as any[]).find(
@@ -76,7 +73,13 @@ export async function syncToDatabase(
         )
         if (!dbMatch) continue
 
-        // ¿Hay cambios reales?
+        // Protección: NUNCA degradar un partido ya finalizado a programado/en vivo.
+        // (evita borrar resultados oficiales o introducidos a mano si FIFA devuelve
+        //  el partido sin datos puntualmente)
+        if (dbMatch.status === 'finished' && fm.status !== 'finished') continue
+
+        // ¿Hay cambios reales? (incluye corregir estados erróneos: p.ej. un partido
+        //  que quedó marcado 'live' por error y ahora FIFA confirma 'scheduled')
         const needsUpdate =
           dbMatch.status     !== fm.status     ||
           dbMatch.home_score !== fm.homeScore  ||
@@ -86,8 +89,13 @@ export async function syncToDatabase(
 
         const payload: Record<string, any> = { status: fm.status }
         if (fm.homeScore !== null && fm.awayScore !== null) {
+          // Partido con marcador → guardamos el resultado
           payload.home_score = fm.homeScore
           payload.away_score = fm.awayScore
+        } else if (fm.status === 'scheduled') {
+          // Partido que vuelve a (o sigue) programado → limpiamos marcador residual
+          payload.home_score = null
+          payload.away_score = null
         }
 
         const { error } = await client

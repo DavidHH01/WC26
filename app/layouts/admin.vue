@@ -47,6 +47,21 @@ const tabs = [
           Salir
         </button>
       </div>
+
+      <!-- Navegación móvil (tabs a ancho completo) -->
+      <nav class="sm:hidden flex border-t border-dark-600">
+        <NuxtLink
+          v-for="tab in tabs"
+          :key="tab.path"
+          :to="tab.path"
+          class="flex-1 text-center font-display font-bold text-sm uppercase tracking-wide py-2.5 transition-colors"
+          :class="route.path === tab.path
+            ? 'bg-dark-600 text-white border-b-2 border-wc-red'
+            : 'text-gray-400 hover:text-white'"
+        >
+          {{ tab.label }}
+        </NuxtLink>
+      </nav>
     </header>
 
     <main class="container mx-auto px-4 max-w-6xl py-8">

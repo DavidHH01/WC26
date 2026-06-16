@@ -79,19 +79,26 @@ function teamName(team: any, locale = 'en-US'): string {
 }
 
 export function resolveCode(team: any): string | null {
-  // 1. Código FIFA directo (algunos endpoints lo incluyen como ShortClubName o AbbreviatedFederation)
-  const direct = team?.ShortClubName ?? team?.AbbreviatedFederation ?? team?.TeamName3 ?? null
+  if (!team) return null
+
+  // 1. Código ISO-3 limpio: IdCountry / Abbreviation / IdAssociation
+  //    (FIFA los da ya normalizados, ej. "IRN", "NZL", "MEX" — son los MÁS fiables.
+  //     ShortClubName puede ser "IR Iran", que no está en el mapa)
+  const iso = team.IdCountry ?? team.Abbreviation ?? team.IdAssociation ?? null
+  if (iso) {
+    if (TEAM_TO_CODE[iso]) return TEAM_TO_CODE[iso]
+    if (/^[A-Z]{3}$/.test(iso)) return iso  // ya es código ISO-3 válido
+  }
+
+  // 2. Código FIFA en otros campos
+  const direct = team.ShortClubName ?? team.AbbreviatedFederation ?? team.TeamName3 ?? null
   if (direct && TEAM_TO_CODE[direct]) return TEAM_TO_CODE[direct]
 
-  // 2. Nombre en inglés
+  // 3. Nombre en inglés / español / cualquiera
   const en = teamName(team, 'en-US')
   if (TEAM_TO_CODE[en]) return TEAM_TO_CODE[en]
-
-  // 3. Nombre en español
   const es = teamName(team, 'es-ES')
   if (TEAM_TO_CODE[es]) return TEAM_TO_CODE[es]
-
-  // 4. Cualquier nombre disponible
   const any = teamName(team)
   return TEAM_TO_CODE[any] ?? null
 }
@@ -200,30 +207,25 @@ export async function fetchFIFAMatches(): Promise<FIFAMatch[]> {
     const homeScore: number | null = home?.Score ?? null
     const awayScore: number | null = away?.Score ?? null
 
-    // Detección de estado:
-    // MatchStatus=1 → en vivo
-    // MatchStatus=3/5 → finalizado
-    // MatchStatus=0 con OfficialityStatus=1 y marcador → también finalizado
-    // (la API WC2026 devuelve MatchStatus=0 para partidos terminados)
-    const matchStatus: number = m.MatchStatus ?? 0
+    // ── Detección de estado (verificada con datos reales WC2026) ──────────────
+    // Comportamiento REAL de la API en el torneo 2026:
+    //   · Partido TERMINADO  → MatchStatus=0, OfficialityStatus=1, marcador presente
+    //   · Partido PROGRAMADO → MatchStatus=1, OfficialityStatus=0, marcador null
+    //   · Partido EN JUEGO   → marcador presente (incl. 0) pero aún NO oficial
+    //
+    // ⚠️ OJO: MatchStatus=1 en WC2026 significa "programado", NO "en vivo".
+    //    Por eso NO usamos MatchStatus para decidir; usamos marcador + officiality,
+    //    que es inequívoco (los programados tienen Score=null).
     const officialityStatus: number = m.OfficialityStatus ?? 0
-    const matchTime: string | null = m.MatchTime ?? null
+    const hasScore = homeScore !== null && awayScore !== null
 
-    // Detección de estado (WC2026 usa MatchStatus=0 para todo cuando no está en juego):
-    // - OfficialityStatus=1  → resultado oficial → FINALIZADO
-    // - MatchStatus=1        → en juego (fifa live feed)
-    // - MatchStatus=0 + scores + MatchTime sin OfficialityStatus → EN JUEGO
-    // - MatchStatus=3/5      → finalizado (formato antiguo FIFA)
     let status: 'scheduled' | 'live' | 'finished' = 'scheduled'
-    if (matchStatus === 3 || matchStatus === 5) {
-      status = 'finished'
-    } else if (officialityStatus >= 1 && homeScore !== null && awayScore !== null) {
-      // Marcador oficial publicado → partido terminado
-      status = 'finished'
-    } else if (matchStatus === 1 || (homeScore !== null && matchTime !== null && officialityStatus === 0)) {
-      // En juego: MatchStatus=1 o tiene marcador+minuto pero aún no es oficial
-      status = 'live'
+    if (officialityStatus >= 1 && hasScore) {
+      status = 'finished'           // resultado oficial publicado
+    } else if (hasScore) {
+      status = 'live'               // tiene marcador pero aún no es oficial → en juego
     }
+    // else → scheduled (marcador null = no ha empezado)
 
     results.push({
       idMatch:   String(m.IdMatch),

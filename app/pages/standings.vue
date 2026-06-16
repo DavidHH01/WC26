@@ -135,6 +135,12 @@ const groupStandings = computed(() =>
 // ── Tabs ──────────────────────────────────────────────────────
 const activeTab = ref<'users' | 'groups' | 'scorers'>('users')
 
+// ── Modal de predicciones de un usuario ───────────────────────
+const selectedUser = ref<{ id: string; username: string } | null>(null)
+function openUser(row: { id: string; username: string }) {
+  selectedUser.value = { id: row.id, username: row.username }
+}
+
 import { playerImageByName } from '~/utils/players'
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -213,7 +219,11 @@ function rankBg(rank: number) {
         <!-- Top 3 podio -->
         <div v-if="rankedLeaderboard.length >= 1" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <template v-for="row in rankedLeaderboard.slice(0, 3)" :key="row.id">
-            <AppCard pad="md" :class="['text-center', rankBg(row.newRank)]">
+            <AppCard
+              pad="md"
+              :class="['text-center cursor-pointer hover:ring-1 hover:ring-wc-gold/40 transition', rankBg(row.newRank)]"
+              @click="openUser(row)"
+            >
               <p :class="['font-display font-black text-5xl mb-1', rankColor(row.newRank)]">
                 {{ row.newRank === 1 ? '🥇' : row.newRank === 2 ? '🥈' : '🥉' }}
               </p>
@@ -267,12 +277,15 @@ function rankBg(rank: number) {
                 </tr>
                 <tr
                   :class="[
-                    'border-b border-dark-500/40 transition-colors',
+                    'border-b border-dark-500/40 transition-colors cursor-pointer',
                     row.active ? 'hover:bg-dark-700/40' : 'opacity-40 hover:opacity-60'
                   ]"
+                  @click="openUser(row)"
                 >
                   <td class="px-4 py-3 font-display font-bold text-gray-400">{{ row.newRank }}</td>
-                  <td class="px-4 py-3 font-semibold">{{ row.username }}</td>
+                  <td class="px-4 py-3 font-semibold">
+                    <span class="border-b border-dotted border-gray-600">{{ row.username }}</span>
+                  </td>
                   <td class="px-3 py-3 text-right text-gray-400 hidden sm:table-cell">
                     {{ row.finished_predicted ?? 0 }}/{{ row.total_predicted ?? 0 }}
                   </td>
@@ -289,6 +302,10 @@ function rankBg(rank: number) {
           </table>
         </AppCard>
       </div>
+      <!-- Pista: pulsar para ver predicciones -->
+      <p v-if="rankedLeaderboard.length" class="text-center text-xs text-gray-500 mt-4">
+        💡 Pulsa sobre un usuario para ver sus predicciones de partidos finalizados
+      </p>
     </div>
 
     <!-- ── GRUPOS ────────────────────────────────────────────── -->
@@ -440,6 +457,13 @@ function rankBg(rank: number) {
         </table>
       </AppCard>
     </div>
+
+    <!-- Modal de predicciones de usuario -->
+    <UserPredictionsModal
+      :user-id="selectedUser?.id ?? null"
+      :username="selectedUser?.username ?? ''"
+      @close="selectedUser = null"
+    />
 
   </div>
 </template>

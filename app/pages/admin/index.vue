@@ -165,7 +165,7 @@ const statusColor: Record<string, string> = {
           <span class="w-2 h-2 rounded-full bg-wc-green animate-pulse inline-block" />
           <span class="text-sm font-semibold text-wc-green">Auto-sync activo</span>
         </span>
-        <span class="text-sm text-gray-400">— el servidor scrapea FIFA.com cada <strong class="text-white">60 segundos</strong> automáticamente.</span>
+        <span class="text-sm text-gray-400">— los resultados, estados y goleadores se sincronizan con FIFA <strong class="text-white">automáticamente</strong> cada minuto. Normalmente no necesitas tocar nada aquí.</span>
       </div>
 
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -229,96 +229,73 @@ const statusColor: Record<string, string> = {
       </button>
     </div>
 
-    <!-- Matches table -->
+    <!-- Matches list (tarjetas responsive) -->
     <AppCard pad="none">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-dark-500 text-gray-400 text-xs uppercase tracking-wider">
-            <th class="text-left px-4 py-3 font-bold">Partido</th>
-            <th class="text-center px-3 py-3 font-bold">Resultado</th>
-            <th class="text-center px-3 py-3 font-bold hidden sm:table-cell">Estado</th>
-            <th class="text-right px-4 py-3 font-bold">Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="m in filtered"
-            :key="m.id"
-            class="border-b border-dark-500/40"
-          >
-            <!-- Match info -->
-            <td class="px-4 py-3">
-              <div class="flex items-center gap-1.5 font-semibold">
-                <CountryFlag :code="m.home_country?.code" :name="m.home_country?.name" :size="16" />
-                <span class="truncate max-w-[70px] sm:max-w-none">{{ m.home_country?.name }}</span>
-                <span class="text-gray-500 px-1 font-bold">vs</span>
-                <span class="truncate max-w-[70px] sm:max-w-none">{{ m.away_country?.name }}</span>
-                <CountryFlag :code="m.away_country?.code" :name="m.away_country?.name" :size="16" />
-              </div>
-              <p class="text-xs text-gray-500 mt-0.5">
-                Grupo {{ m.group?.name }} · {{ fmtDate(m.match_date) }}
-              </p>
-            </td>
+      <ul class="divide-y divide-dark-500/40">
+        <li
+          v-for="m in filtered"
+          :key="m.id"
+          class="p-3 sm:px-4 sm:py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
+        >
+          <!-- Info del partido -->
+          <div class="min-w-0 sm:flex-1">
+            <div class="flex items-center gap-1.5 font-semibold">
+              <CountryFlag :code="m.home_country?.code" :name="m.home_country?.name" :size="16" />
+              <span class="truncate">{{ m.home_country?.name }}</span>
+              <span class="text-gray-500 px-1 font-bold shrink-0">vs</span>
+              <span class="truncate">{{ m.away_country?.name }}</span>
+              <CountryFlag :code="m.away_country?.code" :name="m.away_country?.name" :size="16" />
+            </div>
+            <p class="text-xs text-gray-500 mt-0.5">
+              Grupo {{ m.group?.name }} · {{ fmtDate(m.match_date) }}
+            </p>
+          </div>
 
-            <!-- Score inputs -->
-            <td class="px-3 py-3">
-              <div class="flex items-center justify-center gap-1.5">
-                <input
-                  v-model.number="getEdit(m.id).home"
-                  type="number" min="0" max="30"
-                  class="admin-score"
-                  placeholder="—"
-                >
-                <span class="text-gray-500 font-bold text-lg">–</span>
-                <input
-                  v-model.number="getEdit(m.id).away"
-                  type="number" min="0" max="30"
-                  class="admin-score"
-                  placeholder="—"
-                >
-              </div>
-            </td>
-
-            <!-- Status select -->
-            <td class="px-3 py-3 hidden sm:table-cell">
-              <select
-                v-model="getEdit(m.id).status"
-                class="admin-select"
-                :class="statusColor[getEdit(m.id).status]"
+          <!-- Controles: marcador + estado + guardar -->
+          <div class="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap sm:shrink-0">
+            <!-- Marcador -->
+            <div class="flex items-center gap-1.5">
+              <input
+                v-model.number="getEdit(m.id).home"
+                type="number" min="0" max="30"
+                class="admin-score"
+                placeholder="—"
               >
-                <option value="scheduled">Programado</option>
-                <option value="live">En vivo</option>
-                <option value="finished">Finalizado</option>
-              </select>
-            </td>
+              <span class="text-gray-500 font-bold text-lg">–</span>
+              <input
+                v-model.number="getEdit(m.id).away"
+                type="number" min="0" max="30"
+                class="admin-score"
+                placeholder="—"
+              >
+            </div>
 
-            <!-- Save button -->
-            <td class="px-4 py-3 text-right">
-              <div class="flex items-center justify-end gap-2">
-                <span v-if="saved[m.id]" class="text-xs text-wc-green font-bold">✓ Guardado</span>
-                <span v-if="matchErrors[m.id]" class="text-xs text-red-400">Error</span>
-                <!-- Mobile: status selector inline -->
-                <select
-                  v-model="getEdit(m.id).status"
-                  class="admin-select sm:hidden"
-                  :class="statusColor[getEdit(m.id).status]"
-                >
-                  <option value="scheduled">Prog.</option>
-                  <option value="live">Vivo</option>
-                  <option value="finished">Final.</option>
-                </select>
-                <button
-                  :disabled="saving[m.id]"
-                  class="btn-primary btn-sm"
-                  @click="saveMatch(m.id)"
-                >
-                  {{ saving[m.id] ? '…' : 'Guardar' }}
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            <!-- Estado -->
+            <select
+              v-model="getEdit(m.id).status"
+              class="admin-select flex-1 sm:flex-none min-w-[7rem]"
+              :class="statusColor[getEdit(m.id).status]"
+            >
+              <option value="scheduled">Programado</option>
+              <option value="live">En vivo</option>
+              <option value="finished">Finalizado</option>
+            </select>
+
+            <!-- Guardar -->
+            <button
+              :disabled="saving[m.id]"
+              class="btn-primary btn-sm shrink-0"
+              @click="saveMatch(m.id)"
+            >
+              {{ saving[m.id] ? '…' : 'Guardar' }}
+            </button>
+
+            <!-- Feedback -->
+            <span v-if="saved[m.id]" class="text-xs text-wc-green font-bold shrink-0">✓</span>
+            <span v-if="matchErrors[m.id]" class="text-xs text-red-400 shrink-0">Error</span>
+          </div>
+        </li>
+      </ul>
 
       <p v-if="filtered.length === 0" class="text-center py-10 text-gray-500">
         No hay partidos con este filtro

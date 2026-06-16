@@ -88,7 +88,7 @@ export default defineEventHandler(async () => {
   ]
   results.scorerRaw = {}
   for (const url of scorerEndpoints) {
-    const key = url.split('?')[0].split('/').slice(-2).join('/')
+    const key = (url.split('?')[0] ?? url).split('/').slice(-2).join('/')
     try {
       const r = await fetch(url, { headers: HEADERS })
       const text = await r.text()
