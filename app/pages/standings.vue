@@ -132,8 +132,28 @@ const groupStandings = computed(() =>
     .sort((a, b) => a.position - b.position)
 )
 
+// ── Mejores terceros (WC2026: clasifican los 8 mejores 3.º) ────
+// Los 12 grupos dan 24 plazas (1.º y 2.º) + 8 mejores terceros = 32 → 16avos.
+const bestThirdIds = computed(() => {
+  const thirds = (groupRows.value ?? [])
+    .filter(r => r.position === 3)
+    .sort((a, b) =>
+      b.group_points - a.group_points ||
+      b.goal_diff    - a.goal_diff ||
+      b.goals_for    - a.goals_for
+    )
+  return new Set(thirds.slice(0, 8).map(r => r.id))
+})
+
+function isQualified(row: GroupStandingRow): boolean {
+  return row.position <= 2 || bestThirdIds.value.has(row.id)
+}
+function isBestThird(row: GroupStandingRow): boolean {
+  return row.position === 3 && bestThirdIds.value.has(row.id)
+}
+
 // ── Tabs ──────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'groups' | 'scorers'>('users')
+const activeTab = ref<'users' | 'groups' | 'bracket' | 'scorers'>('users')
 
 // ── Modal de predicciones de un usuario ───────────────────────
 const selectedUser = ref<{ id: string; username: string } | null>(null)
@@ -168,7 +188,7 @@ function rankBg(rank: number) {
     <p class="text-gray-400 text-sm mb-8">Rankings y estadísticas del torneo</p>
 
     <!-- Tabs -->
-    <div class="flex gap-2 mb-8">
+    <div class="flex flex-wrap gap-2 mb-8">
       <button
         :class="activeTab === 'users' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'"
         @click="activeTab = 'users'"
@@ -180,6 +200,12 @@ function rankBg(rank: number) {
         @click="activeTab = 'groups'"
       >
         Grupos
+      </button>
+      <button
+        :class="activeTab === 'bracket' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'"
+        @click="activeTab = 'bracket'"
+      >
+        Eliminatorias
       </button>
       <button
         :class="activeTab === 'scorers' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'"
@@ -351,20 +377,26 @@ function rankBg(rank: number) {
           </thead>
           <tbody>
             <tr
-              v-for="(row, i) in groupStandings"
+              v-for="row in groupStandings"
               :key="row.id"
               :class="[
                 'border-b border-dark-500/40 transition-colors',
-                i < 2 ? 'bg-wc-navy/10' : '',
+                row.position <= 2 ? 'bg-wc-green/10' : (isBestThird(row) ? 'bg-wc-gold/10' : ''),
               ]"
             >
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
-                  <span class="font-display font-black text-sm w-5 text-gray-500">{{ row.position }}</span>
+                  <span
+                    class="font-display font-black text-sm w-5"
+                    :class="isQualified(row) ? 'text-white' : 'text-gray-500'"
+                  >{{ row.position }}</span>
                   <CountryFlag :code="row.code" :name="row.name" :size="20" />
                   <span class="font-semibold truncate max-w-[120px] sm:max-w-none">{{ row.name }}</span>
-                  <span v-if="i < 2" class="hidden sm:inline text-xs text-wc-green font-bold border border-wc-green/30 bg-wc-green/10 px-1.5 py-0.5 rounded-sm">
+                  <span v-if="row.position <= 2" class="hidden sm:inline text-xs text-wc-green font-bold border border-wc-green/30 bg-wc-green/10 px-1.5 py-0.5 rounded-sm">
                     CLASIF
+                  </span>
+                  <span v-else-if="isBestThird(row)" class="hidden sm:inline text-xs text-wc-gold font-bold border border-wc-gold/30 bg-wc-gold/10 px-1.5 py-0.5 rounded-sm">
+                    3.º
                   </span>
                 </div>
               </td>
@@ -384,9 +416,18 @@ function rankBg(rank: number) {
           </tbody>
         </table>
         <p class="px-4 py-2 text-xs text-gray-400 border-t border-dark-500">
-          Los dos primeros de cada grupo clasifican a octavos de final
+          Clasifican los <strong class="text-wc-green">2 primeros</strong> de cada grupo +
+          los <strong class="text-wc-gold">8 mejores terceros</strong> (32 equipos) a dieciseisavos de final
         </p>
       </AppCard>
+    </div>
+
+    <!-- ── ELIMINATORIAS ─────────────────────────────────────── -->
+    <div v-if="activeTab === 'bracket'">
+      <p class="text-sm text-gray-400 mb-6">
+        Cuadro de la fase final · 32 equipos · los equipos se rellenan solos al avanzar el torneo
+      </p>
+      <KnockoutBracket />
     </div>
 
     <!-- ── GOLEADORES ────────────────────────────────────────── -->
